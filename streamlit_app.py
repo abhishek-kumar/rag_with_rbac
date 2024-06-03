@@ -66,7 +66,8 @@ def main():
             st.warning('Please enter Google Auth secrets JSON (in sidebar)!', icon='⚠')
             return
         auth_flow(client_secrets, redirect_uri)
-        return
+        if "google_auth_code" not in st.session_state:
+            return
 
     email = st.session_state["user_info"].get("email")
     st.write(f"Logged in: {email}")
