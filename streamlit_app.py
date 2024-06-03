@@ -101,8 +101,11 @@ def main():
             st.warning('Please enter your OpenAI API key!', icon='⚠')
         if not pinecone_api_key:
             st.warning('Please enter your Pinecone API key!', icon='⚠')
+        if not pinecone_index_name:
+            st.warning('Please enter your Pinecone index name!', icon='⚠')
         if submitted and openai_api_key.startswith('sk-'):
             os.environ['PINECONE_API_KEY'] = pinecone_api_key
+            st.write(f"DEBUG: {pinecone_api_key=}, {pinecone_index_name=}.")
             pc = Pinecone(api_key=pinecone_api_key)
             index = pc.Index(pinecone_index_name)
             index_wrapper = VectorStoreIndexWrapper(vectorstore=index)
