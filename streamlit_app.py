@@ -50,7 +50,7 @@ def auth_flow(client_secrets, redirect_uri):
             nav_to(authorization_url)
 
 
-def generate_response(input_text):
+def generate_response(input_text, openai_api_key):
     """Generates response via OpenAI LLM call."""
     try:
         llm = OpenAI(temperature=0.6, openai_api_key=openai_api_key)
@@ -87,7 +87,7 @@ def main():
         if not openai_api_key.startswith('sk-'):
             st.warning('Please enter your OpenAI API key!', icon='⚠')
         if submitted and openai_api_key.startswith('sk-'):
-            generate_response(text)
+            generate_response(text, openai_api_key)
 
 
 if __name__ == "__main__":
