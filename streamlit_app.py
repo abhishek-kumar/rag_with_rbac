@@ -59,20 +59,19 @@ def main():
         client_secrets = st.sidebar.text_area('Google auth client secrets (JSON)')
 
 
-    with st.form('simple_llm_form'):
-        text = st.text_area('Ask the copilot:', 'What can you tell me about quarterly projections?')
-        submitted = st.form_submit_button('Submit')
-        if not openai_api_key.startswith('sk-'):
-            st.warning('Please enter your OpenAI API key!', icon='⚠')
-        if "google_auth_code" not in st.session_state:
-            if not client_secrets:
-                st.warning('Please enter Google Auth secrets JSON!', icon='⚠')
-            auth_flow(client_secrets, redirect_uri)
-        if "google_auth_code" in st.session_state:
-            email = st.session_state["user_info"].get("email")
-            st.write(f"Logged in: {email}")
-        if submitted and openai_api_key.startswith('sk-'):
-            generate_response(text)
+    text = st.text_area('Ask the copilot:', 'What can you tell me about quarterly projections?')
+    submitted = st.form_submit_button('Submit')
+    if not openai_api_key.startswith('sk-'):
+        st.warning('Please enter your OpenAI API key!', icon='⚠')
+    if "google_auth_code" not in st.session_state:
+        if not client_secrets:
+            st.warning('Please enter Google Auth secrets JSON!', icon='⚠')
+        auth_flow(client_secrets, redirect_uri)
+    if "google_auth_code" in st.session_state:
+        email = st.session_state["user_info"].get("email")
+        st.write(f"Logged in: {email}")
+    if submitted and openai_api_key.startswith('sk-'):
+        generate_response(text)
 
 
 if __name__ == "__main__":
