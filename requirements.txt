@@ -1,4 +1,6 @@
+google-api-python-client
 google-auth
+google-auth-oauthlib
 langchain
 langchain-community
 openai
