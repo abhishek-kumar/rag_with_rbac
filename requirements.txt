@@ -3,4 +3,3 @@ langchain
 langchain-community
 openai
 streamlit
-webbrowser
