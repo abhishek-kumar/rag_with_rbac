@@ -72,7 +72,7 @@ def main():
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
     client_secrets = os.environ.get("GOOGLE_AUTH_CLIENT_SECRETS", "")
     pinecone_api_key = os.environ.get("PINECONE_API_KEY", "")
-    pinecone_index_name = os.environ.get("PINECONE_API_KEY", "")
+    pinecone_index_name = os.environ.get("PINECONE_INDEX_NAME", "")
 
     st.title('LLM App: RAG with RBAC v0.01')
     if not openai_api_key:
@@ -105,7 +105,7 @@ def main():
             st.warning('Please enter your Pinecone index name!', icon='⚠')
         if submitted and openai_api_key.startswith('sk-'):
             os.environ['PINECONE_API_KEY'] = pinecone_api_key
-            st.write(f"DEBUG: {pinecone_api_key=}, {pinecone_index_name=}.")
+            # st.write(f"DEBUG: {pinecone_api_key=}, {pinecone_index_name=}.")
             pc = Pinecone(api_key=pinecone_api_key)
             index = pc.Index(pinecone_index_name)
             index_wrapper = VectorStoreIndexWrapper(vectorstore=index)
