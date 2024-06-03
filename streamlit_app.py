@@ -1,3 +1,4 @@
+import json
 import os
 
 import google_auth_oauthlib.flow
@@ -13,8 +14,9 @@ def auth_flow(client_secrets, redirect_uri):
     """Handles user authentication via Google OAuth."""
     st.write("Retrieval-augmented-generation with role based access control.")
     auth_code = st.query_params.get("code")
+    client_secrets_json = json.loads(client_secrets)
     flow = google_auth_oauthlib.flow.Flow.from_client_config(
-        client_secrets,
+        client_secrets_json,
         scopes=["https://www.googleapis.com/auth/userinfo.email", "openid"],
         redirect_uri=redirect_uri,
     )
