@@ -67,11 +67,6 @@ def generate_response(input_text, openai_api_key, index):
         st.warning(f"OpenAI Error: {str(ex)}")
 
 
-def get_pinecone_index(pinecone_index_name, embedding):
-    vectorstore = PineconeVectorStore(
-      index_name=pinecone_index_name, embedding=embedding)
-    return VectorStoreIndexWrapper(vectorstore=vectorstore)
-
 def main():
     redirect_uri = os.environ.get("REDIRECT_URI", "https://rag-rbac.streamlit.app")
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
@@ -110,10 +105,11 @@ def main():
             os.environ['PINECONE_API_KEY'] = pinecone_api_key
             pc = Pinecone(api_key=pinecone_api_key)
             index = pc.Index(pinecone_index_name)
+            index_wrapper = VectorStoreIndexWrapper(vectorstore=index)
             generate_response(
                 text,
                 openai_api_key,
-                index)
+                index_wrapper)
 
 
 if __name__ == "__main__":
