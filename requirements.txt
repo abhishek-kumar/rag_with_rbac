@@ -5,3 +5,4 @@ langchain
 langchain-community
 openai
 streamlit
+streamlit_javascript

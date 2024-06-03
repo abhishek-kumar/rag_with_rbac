@@ -5,10 +5,14 @@ import google_auth_oauthlib.flow
 from googleapiclient.discovery import build
 
 import streamlit as st
-import webbrowser
+from streamlit_javascript import st_javascript
 
 from langchain.llms import OpenAI
 
+
+def nav_to(url):
+    js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
+    st_javascript(js)
 
 def auth_flow(client_secrets, redirect_uri):
     """Handles user authentication via Google OAuth."""
@@ -44,7 +48,7 @@ def auth_flow(client_secrets, redirect_uri):
                 include_granted_scopes="true",
             )
             st.warning(f"DEBUG: Opening new tab with '{authorization_url}'...")
-            webbrowser.open_new_tab(authorization_url)
+            nav_to(authorization_url)
 
 
 def generate_response(input_text):
