@@ -21,9 +21,12 @@ def auth_flow(client_secrets, redirect_uri):
         redirect_uri=redirect_uri,
     )
     if auth_code:
-        flow.fetch_token(code=auth_code)
+        try:
+            flow.fetch_token(code=auth_code)
+        except Exception:
+            auth_code = None
+    if auth_code:
         credentials = flow.credentials
-        st.write("Login Done")
         user_info_service = build(
             serviceName="oauth2",
             version="v2",
@@ -33,6 +36,7 @@ def auth_flow(client_secrets, redirect_uri):
         assert user_info.get("email"), "Email not found in infos"
         st.session_state["google_auth_code"] = auth_code
         st.session_state["user_info"] = user_info
+        st.write("Login Done")
     else:
         if st.button("Sign in with Google"):
             authorization_url, state = flow.authorization_url(
