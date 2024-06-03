@@ -39,6 +39,7 @@ def auth_flow(client_secrets, redirect_uri):
                 access_type="offline",
                 include_granted_scopes="true",
             )
+            st.warning(f"DEBUG: Opening new tab with '{authorization_url}'...")
             webbrowser.open_new_tab(authorization_url)
 
 
@@ -62,7 +63,8 @@ def main():
 
     if "google_auth_code" not in st.session_state:
         if not client_secrets:
-            st.warning('Please enter Google Auth secrets JSON!', icon='⚠')
+            st.warning('Please enter Google Auth secrets JSON (in sidebar)!', icon='⚠')
+            return
         auth_flow(client_secrets, redirect_uri)
         return
 
