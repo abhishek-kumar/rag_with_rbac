@@ -1,5 +1,6 @@
 import json
 import os
+import traceback
 
 import google_auth_oauthlib.flow
 from googleapiclient.discovery import build
@@ -118,7 +119,7 @@ def main():
                     openai_api_key,
                     index_wrapper)
             except Exception as ex:
-                st.warning(str(ex))
+                st.warning(traceback.format_exc())
 
 
 if __name__ == "__main__":
