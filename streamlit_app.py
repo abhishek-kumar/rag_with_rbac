@@ -58,8 +58,6 @@ def main():
     if not client_secrets:
         client_secrets = st.sidebar.text_area('Google auth client secrets (JSON)')
 
-    if "google_auth_code" not in st.session_state:
-        auth_flow(client_secrets, redirect_uri)
 
     if "google_auth_code" in st.session_state:
         email = st.session_state["user_info"].get("email")
@@ -69,6 +67,10 @@ def main():
             submitted = st.form_submit_button('Submit')
             if not openai_api_key.startswith('sk-'):
                 st.warning('Please enter your OpenAI API key!', icon='⚠')
+            if "google_auth_code" not in st.session_state:
+                if not client_secrets:
+                    st.warning('Please enter Google Auth secrets JSON!', icon='⚠')
+                auth_flow(client_secrets, redirect_uri)
             if submitted and openai_api_key.startswith('sk-'):
                 generate_response(text)
 
