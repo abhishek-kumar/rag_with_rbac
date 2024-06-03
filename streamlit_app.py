@@ -9,6 +9,7 @@ import streamlit as st
 from streamlit_javascript import st_javascript
 
 from langchain_community.llms import OpenAI
+from langchain_community.vectorstores import Pinecone as PineconeVectorStore
 from langchain.indexes.vectorstore import VectorStoreIndexWrapper
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 
@@ -112,7 +113,7 @@ def main():
             index = pc.Index(pinecone_index_name)
             try:
                 embed = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-                vector_store = Pinecone(index, embed.embed_query, "text")
+                vector_store = PineconeVectorStore(index, embed.embed_query, "text")
                 index_wrapper = VectorStoreIndexWrapper(vectorstore=vector_store)
                 generate_response(
                     text,
