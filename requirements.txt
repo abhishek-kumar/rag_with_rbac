@@ -1,4 +1,6 @@
-streamlit
-openai
+google-auth
 langchain
 langchain-community
+openai
+streamlit
+webbrowser
