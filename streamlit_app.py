@@ -9,7 +9,7 @@ import webbrowser
 from langchain.llms import OpenAI
 
 
-def auth_flow():
+def auth_flow(redirect_uri):
     """Handles user authentication via Google OAuth."""
     st.write("Retrieval-augmented-generation with role based access control.")
     auth_code = st.query_params.get("code")
@@ -54,7 +54,7 @@ def main():
         openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
 
     if "google_auth_code" not in st.session_state:
-        auth_flow()
+        auth_flow(redirect_uri)
 
     if "google_auth_code" in st.session_state:
         email = st.session_state["user_info"].get("email")
