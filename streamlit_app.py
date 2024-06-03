@@ -8,9 +8,6 @@ import webbrowser
 
 from langchain.llms import OpenAI
 
-redirect_uri = os.environ.get("REDIRECT_URI", "https://rag-rbac.streamlit.app")
-openai_api_key = os.environ.get("OPENAI_API_KEY", "")
-
 
 def auth_flow():
     """Handles user authentication via Google OAuth."""
@@ -50,6 +47,8 @@ def generate_response(input_text):
 
 
 def main():
+    redirect_uri = os.environ.get("REDIRECT_URI", "https://rag-rbac.streamlit.app")
+    openai_api_key = os.environ.get("OPENAI_API_KEY", "")
     st.title('LLM App: RAG with RBAC v0.01')
     if not openai_api_key:
         openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
