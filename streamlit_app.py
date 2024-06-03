@@ -40,7 +40,6 @@ def auth_flow(client_secrets, redirect_uri):
         assert user_info.get("email"), "Email not found in infos"
         st.session_state["google_auth_code"] = auth_code
         st.session_state["user_info"] = user_info
-        st.write("Login Done")
     else:
         if st.button("Sign in with Google"):
             authorization_url, state = flow.authorization_url(
@@ -53,8 +52,11 @@ def auth_flow(client_secrets, redirect_uri):
 
 def generate_response(input_text):
     """Generates response via OpenAI LLM call."""
-    llm = OpenAI(temperature=0.6, openai_api_key=openai_api_key)
-    st.info(llm(input_text))
+    try:
+        llm = OpenAI(temperature=0.6, openai_api_key=openai_api_key)
+        st.info(llm(input_text))
+    except Exception as ex:
+        st.warning(f"OpenAI Error: {str(ex)}")
 
 
 def main():
