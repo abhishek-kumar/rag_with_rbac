@@ -9,12 +9,12 @@ import webbrowser
 from langchain.llms import OpenAI
 
 
-def auth_flow(redirect_uri):
+def auth_flow(client_secrets, redirect_uri):
     """Handles user authentication via Google OAuth."""
     st.write("Retrieval-augmented-generation with role based access control.")
     auth_code = st.query_params.get("code")
-    flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-        "client_secret.json", # replace with your json credentials from your google auth app
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(
+        client_secrets,
         scopes=["https://www.googleapis.com/auth/userinfo.email", "openid"],
         redirect_uri=redirect_uri,
     )
@@ -49,12 +49,17 @@ def generate_response(input_text):
 def main():
     redirect_uri = os.environ.get("REDIRECT_URI", "https://rag-rbac.streamlit.app")
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
+    client_secrets = os.environ.get("GOOGLE_AUTH_CLIENT_SECRETS", "")
+
     st.title('LLM App: RAG with RBAC v0.01')
     if not openai_api_key:
         openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
 
+    if not client_secrets:
+        client_secrets = st.sidebar.text_area('Google auth client secrets (JSON)')
+
     if "google_auth_code" not in st.session_state:
-        auth_flow(redirect_uri)
+        auth_flow(client_secrets, redirect_uri)
 
     if "google_auth_code" in st.session_state:
         email = st.session_state["user_info"].get("email")
