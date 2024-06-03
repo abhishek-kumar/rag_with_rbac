@@ -108,11 +108,14 @@ def main():
             # st.write(f"DEBUG: {pinecone_api_key=}, {pinecone_index_name=}.")
             pc = Pinecone(api_key=pinecone_api_key)
             index = pc.Index(pinecone_index_name)
-            index_wrapper = VectorStoreIndexWrapper(vectorstore=index)
-            generate_response(
-                text,
-                openai_api_key,
-                index_wrapper)
+            try:
+                index_wrapper = VectorStoreIndexWrapper(vectorstore=index)
+                generate_response(
+                    text,
+                    openai_api_key,
+                    index_wrapper)
+            except Exception as ex:
+                st.warning(str(ex))
 
 
 if __name__ == "__main__":
