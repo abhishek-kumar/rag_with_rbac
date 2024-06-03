@@ -11,7 +11,7 @@ from langchain.llms import OpenAI
 
 
 def nav_to(url):
-    js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
+    js = f'window.open("{url}").then(r => window.parent.location.href);'
     st_javascript(js)
 
 def auth_flow(client_secrets, redirect_uri):
