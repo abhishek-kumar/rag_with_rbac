@@ -7,8 +7,10 @@ from googleapiclient.discovery import build
 import streamlit as st
 from streamlit_javascript import st_javascript
 
-from langchain.llms import OpenAI
+from langchain_community.llms import OpenAI
+from langchain.indexes.vectorstore import VectorStoreIndexWrapper
 
+from pinecone import Pinecone
 
 def nav_to(url):
     js = f'window.open("{url}").then(r => window.parent.location.href);'
@@ -50,24 +52,40 @@ def auth_flow(client_secrets, redirect_uri):
             nav_to(authorization_url)
 
 
-def generate_response(input_text, openai_api_key):
+def generate_response(input_text, openai_api_key, index):
     """Generates response via OpenAI LLM call."""
     try:
         llm = OpenAI(temperature=0.6, openai_api_key=openai_api_key)
-        st.info(llm(input_text))
+        user_roles = ["role:fin_users", "role:engineering"] # TODO: parameterize this.
+        response = index.query(
+            input_text,
+            llm=llm,
+            retriever_kwargs={"search_kwargs": {"filter": {"roles": {"$in": user_roles}}}}
+        )
+        st.info(response)
     except Exception as ex:
         st.warning(f"OpenAI Error: {str(ex)}")
 
+
+def get_pinecone_index(pinecone_index_name, embedding):
+    vectorstore = PineconeVectorStore(
+      index_name=pinecone_index_name, embedding=embedding)
+    return VectorStoreIndexWrapper(vectorstore=vectorstore)
 
 def main():
     redirect_uri = os.environ.get("REDIRECT_URI", "https://rag-rbac.streamlit.app")
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
     client_secrets = os.environ.get("GOOGLE_AUTH_CLIENT_SECRETS", "")
+    pinecone_api_key = os.environ.get("PINECONE_API_KEY", "")
+    pinecone_index_name = os.environ.get("PINECONE_API_KEY", "")
 
     st.title('LLM App: RAG with RBAC v0.01')
     if not openai_api_key:
-        openai_api_key = st.sidebar.text_input('OpenAI API Key', type='password')
-
+        openai_api_key = st.sidebar.text_input('OpenAI API key', type='password')
+    if not pinecone_api_key:
+        pinecone_api_key = st.sidebar.text_input('Pinecone API key', type='password')
+    if not pinecone_index_name:
+        pinecone_index_name = st.sidebar.text_input('Pinecone index name')
     if not client_secrets:
         client_secrets = st.sidebar.text_area('Google auth client secrets (JSON)')
 
@@ -86,8 +104,16 @@ def main():
         submitted = st.form_submit_button('Submit')
         if not openai_api_key.startswith('sk-'):
             st.warning('Please enter your OpenAI API key!', icon='⚠')
+        if not pinecone_api_key:
+            st.warning('Please enter your Pinecone API key!', icon='⚠')
         if submitted and openai_api_key.startswith('sk-'):
-            generate_response(text, openai_api_key)
+            os.environ['PINECONE_API_KEY'] = pinecone_api_key
+            pc = Pinecone(api_key=pinecone_api_key)
+            index = pc.Index(pinecone_index_name)
+            generate_response(
+                text,
+                openai_api_key,
+                index)
 
 
 if __name__ == "__main__":

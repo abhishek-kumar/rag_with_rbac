@@ -4,5 +4,6 @@ google-auth-oauthlib
 langchain
 langchain-community
 openai
+pinecone-client
 streamlit
 streamlit_javascript
