@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import traceback
 
@@ -74,6 +75,7 @@ def generate_response(input_text, openai_api_key, index, groups):
             help="Response from the LLM with RAC, applying role based access controls.")
         st.warning(f"DEBUG: user groups {groups}.")
         st.warning(f"DEBUG: answer:\n{response['answer'].strip()}")
+        logging.warning(f"DEBUG: answer:\n{response['answer'].strip()}")
     except Exception as ex:
         st.warning(f"OpenAI Error: {str(ex)}")
 
