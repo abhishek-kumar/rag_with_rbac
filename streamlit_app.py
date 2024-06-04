@@ -66,9 +66,9 @@ def generate_response(input_text, openai_api_key, index):
         )
         sources = ""
         for source in response['sources'].split(','):
-            sources += f"  * :blue-background[{source.strip()}]  "
+            sources += f"  * :blue-background[{source.strip()}]\n"
         st.markdown(
-            body=f"**:blue[Copilot:]** *{response['answer'].strip()}*  {sources}",
+            body=f"**:blue[Copilot:]** *{response['answer'].strip()}*\n{sources}",
             help="Response from the LLM with RAC, applying role based access controls.")
     except Exception as ex:
         st.warning(f"OpenAI Error: {str(ex)}")
@@ -102,7 +102,7 @@ def main():
     email = st.session_state["user_info"].get("email")
     st.write(f"Logged in: {email}")
     with st.form("ask_copilot_form"):
-        text = st.text_area('Ask the copilot:', 'What can you tell me about quarterly projections?')
+        text = st.text_area(label='', value='Tell me about the quarterly projections.')
         submitted = st.form_submit_button('Submit')
         if not openai_api_key.startswith('sk-'):
             st.warning('Please enter your OpenAI API key!', icon='⚠')
