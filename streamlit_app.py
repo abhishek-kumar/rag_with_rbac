@@ -70,7 +70,7 @@ def generate_response(input_text, openai_api_key, index, groups):
         for source in response['sources'].split(','):
             sources += f"  * :blue-background[{source.strip()}]\n"
         st.markdown(
-            body=f"**:blue[Copilot:]** *{response['answer'].strip()}*\n{sources}",
+            body=f"**:blue[Copilot:]** *```text\n{response['answer'].strip()}\n```*\n{sources}",
             help="Response from the LLM with RAC, applying role based access controls.")
         st.warning(f"DEBUG: user groups {groups}.")
     except Exception as ex:
