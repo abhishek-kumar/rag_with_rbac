@@ -54,15 +54,14 @@ def auth_flow(client_secrets, redirect_uri):
             url=authorization_url,
             help=f"Redirecting to '{authorization_url}' ...")
 
-def generate_response(input_text, openai_api_key, index):
+def generate_response(input_text, openai_api_key, index, groups):
     """Generates response via OpenAI LLM call."""
     try:
-        llm = OpenAI(temperature=0.6, openai_api_key=openai_api_key)
-        user_roles = ["role:fin_users", "role:engineering"] # TODO: parameterize this.
+        llm = OpenAI(temperature=0.2, openai_api_key=openai_api_key)
         response = index.query_with_sources(
             input_text,
             llm=llm,
-            retriever_kwargs={"search_kwargs": {"filter": {"roles": {"$in": user_roles}}}}
+            retriever_kwargs={"search_kwargs": {"filter": {"roles": {"$in": groups}}}}
         )
         sources = ""
         for source in response['sources'].split(','):
@@ -70,6 +69,7 @@ def generate_response(input_text, openai_api_key, index):
         st.markdown(
             body=f"**:blue[Copilot:]** *{response['answer'].strip()}*\n{sources}",
             help="Response from the LLM with RAC, applying role based access controls.")
+        st.warning(f"DEBUG: user groups {groups}.")
     except Exception as ex:
         st.warning(f"OpenAI Error: {str(ex)}")
 
@@ -90,6 +90,11 @@ def main():
         pinecone_index_name = st.sidebar.text_input('Pinecone index name')
     if not client_secrets:
         client_secrets = st.sidebar.text_area('Google auth client secrets (JSON)')
+    user_groups = st.sidebar.text_input(label="User groups", value="role:fin_users, role:engineering")
+    collect_groups = lambda x : [f"{group.strip()}" for group in x.split(',') if group.strip() != ""]
+    collected_groups = collect_groups(user_groups)
+    groups_markdown = [f":blue-background[{group}]" for group in collected_groups]
+    st.sidebar.markdown(body=" ".join(groups_markdown))
 
     if "google_auth_code" not in st.session_state:
         if not client_secrets:
@@ -122,7 +127,8 @@ def main():
                 generate_response(
                     text,
                     openai_api_key,
-                    index_wrapper)
+                    index_wrapper,
+                    collected_groups)
             except Exception as ex:
                 st.warning(traceback.format_exc())
 
