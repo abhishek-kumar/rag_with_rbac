@@ -73,7 +73,7 @@ def generate_response(input_text, openai_api_key, index, groups):
                     "filter": {
                         "roles": {"$in": [f"role:{group}" for group in groups]}}}}
         )
-        sources = f"**:blue[Sources:]**\n"
+        sources = f"**:blue[Sources]**\n\n"
         num_sources = 0
         for source in response['sources'].split(','):
             sources += f"    * :blue-background[{source.strip()}]\n"
