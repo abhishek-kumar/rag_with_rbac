@@ -66,9 +66,9 @@ def generate_response(input_text, openai_api_key, index):
         )
         sources = ""
         for source in response['sources'].split(','):
-            sources += f"  * :blue-background[{source}]  "
+            sources += f"  * :blue-background[{source.strip()}]  "
         st.markdown(
-            body=f"**:blue[Copilot:]** *{response['answer']}*  {sources}",
+            body=f"**:blue[Copilot:]** *{response['answer'].strip()}*  {sources}",
             help="Response from the LLM with RAC, applying role based access controls.")
     except Exception as ex:
         st.warning(f"OpenAI Error: {str(ex)}")
