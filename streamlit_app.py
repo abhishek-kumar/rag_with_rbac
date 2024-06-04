@@ -52,7 +52,7 @@ def auth_flow(client_secrets, redirect_uri):
         st.link_button(
             label="Sign in with Google",
             url=authorization_url,
-            help=f"Redirecting to '{authorization_url}' ..."):
+            help=f"Redirecting to '{authorization_url}' ...")
 
 def generate_response(input_text, openai_api_key, index):
     """Generates response via OpenAI LLM call."""
