@@ -73,15 +73,18 @@ def generate_response(input_text, openai_api_key, index, groups):
                     "filter": {
                         "roles": {"$in": [f"role:{group}" for group in groups]}}}}
         )
-        sources = ""
+        sources = f"**:blue[Sources:]**:\n"
+        num_sources = 0
         for source in response['sources'].split(','):
-            sources += f"  * :blue-background[{source.strip()}]\n"
+            sources += f"    * :blue-background[{source.strip()}]\n"
+            num_sources += 1
+        if num_sources == 0:
+            sources += f"  :blue-background[None found.]\n"
         answer = escape_markdown(response["answer"].strip())
         st.markdown(
             body=f"**:blue[Copilot:]** *{answer}*\n{sources}",
             help="Response from the LLM with RAC, applying role based access controls.")
-        st.warning(f"DEBUG: user groups {groups}.")
-        st.warning(f"DEBUG: answer:\n{answer}")
+        logging.warning(f"DEBUG: user groups {groups}.")
         logging.warning(f"DEBUG: answer:\n{answer}")
     except Exception as ex:
         st.warning(f"OpenAI Error: {str(ex)}")
