@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import traceback
 
 import google_auth_oauthlib.flow
@@ -19,6 +20,11 @@ from pinecone import Pinecone
 def nav_to(url):
     js = f'window.open("{url}", "_self").then(r => window.parent.location.href);'
     st_javascript(js)
+
+def escape_markdown(text):
+    match_md = r'((([_*]).+?\3[^_*]*)*)([_*])'
+    result = re.sub(match_md, "\g<1>\\\\\g<4>", text)
+    return result.replace("$", "\$")
 
 def auth_flow(client_secrets, redirect_uri):
     """Handles user authentication via Google OAuth."""
@@ -70,12 +76,13 @@ def generate_response(input_text, openai_api_key, index, groups):
         sources = ""
         for source in response['sources'].split(','):
             sources += f"  * :blue-background[{source.strip()}]\n"
+        answer = escape_markdown(response["answer"].strip())
         st.markdown(
-            body=f"**:blue[Copilot:]** *```text\n{response['answer'].strip()}\n```*\n{sources}",
+            body=f"**:blue[Copilot:]** *{answer}*\n{sources}",
             help="Response from the LLM with RAC, applying role based access controls.")
         st.warning(f"DEBUG: user groups {groups}.")
-        st.warning(f"DEBUG: answer:\n{response['answer'].strip()}")
-        logging.warning(f"DEBUG: answer:\n{response['answer'].strip()}")
+        st.warning(f"DEBUG: answer:\n{answer}")
+        logging.warning(f"DEBUG: answer:\n{answer}")
     except Exception as ex:
         st.warning(f"OpenAI Error: {str(ex)}")
 
