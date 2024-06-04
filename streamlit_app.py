@@ -16,7 +16,7 @@ from langchain_community.embeddings import SentenceTransformerEmbeddings
 from pinecone import Pinecone
 
 def nav_to(url):
-    js = f'window.open("{url}").then(r => window.parent.location.href);'
+    js = f'window.open("{url}", "_self").then(r => window.parent.location.href);'
     st_javascript(js)
 
 def auth_flow(client_secrets, redirect_uri):
@@ -65,8 +65,12 @@ def generate_response(input_text, openai_api_key, index):
             llm=llm,
             retriever_kwargs={"search_kwargs": {"filter": {"roles": {"$in": user_roles}}}}
         )
-        st.info(response)
-        st.warning(f"DEBUG: response keys {response.keys()}.")
+        sources = ""
+        for source in response['sources'].split(','):
+            sources += f"  * :blue-background[{source}]  "
+        st.markdown(
+            body=f"**:blue[Copilot:]** *{response['answer']}*  {sources}",
+            help="Response from the LLM with RAC, applying role based access controls.")
     except Exception as ex:
         st.warning(f"OpenAI Error: {str(ex)}")
 
