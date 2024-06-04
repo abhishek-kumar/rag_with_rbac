@@ -66,6 +66,7 @@ def generate_response(input_text, openai_api_key, index):
             retriever_kwargs={"search_kwargs": {"filter": {"roles": {"$in": user_roles}}}}
         )
         st.info(response)
+        st.warning(f"DEBUG: response keys {response.keys()}.")
     except Exception as ex:
         st.warning(f"OpenAI Error: {str(ex)}")
 
