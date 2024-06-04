@@ -46,14 +46,13 @@ def auth_flow(client_secrets, redirect_uri):
         st.session_state["google_auth_code"] = auth_code
         st.session_state["user_info"] = user_info
     else:
-        if st.button("Sign in with Google"):
-            authorization_url, state = flow.authorization_url(
-                access_type="offline",
-                include_granted_scopes="true",
-            )
-            st.warning(f"DEBUG: Opening new tab with '{authorization_url}'...")
-            nav_to(authorization_url)
-
+        authorization_url, state = flow.authorization_url(
+            access_type="offline",
+            include_granted_scopes="true")
+        st.link_button(
+            label="Sign in with Google",
+            url=authorization_url,
+            help=f"Redirecting to '{authorization_url}' ..."):
 
 def generate_response(input_text, openai_api_key, index):
     """Generates response via OpenAI LLM call."""
