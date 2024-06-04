@@ -60,7 +60,7 @@ def generate_response(input_text, openai_api_key, index):
     try:
         llm = OpenAI(temperature=0.6, openai_api_key=openai_api_key)
         user_roles = ["role:fin_users", "role:engineering"] # TODO: parameterize this.
-        response = index.query(
+        response = index.query_with_sources(
             input_text,
             llm=llm,
             retriever_kwargs={"search_kwargs": {"filter": {"roles": {"$in": user_roles}}}}
