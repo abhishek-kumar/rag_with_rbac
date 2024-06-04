@@ -76,7 +76,7 @@ def generate_response(input_text, openai_api_key, index, groups):
         sources = f"**:blue[Sources]**\n\n"
         num_sources = 0
         for source in response['sources'].split(','):
-            sources += f"    * :blue-background[{source.strip()}]\n"
+            sources += f"  * :blue-background[{source.strip()}]\n"
             num_sources += 1
         if num_sources == 0:
             sources += f"  :blue-background[None found.]\n"
