@@ -61,7 +61,10 @@ def generate_response(input_text, openai_api_key, index, groups):
         response = index.query_with_sources(
             input_text,
             llm=llm,
-            retriever_kwargs={"search_kwargs": {"filter": {"roles": {"$in": groups}}}}
+            retriever_kwargs={
+                "search_kwargs": {
+                    "filter": {
+                        "roles": {"$in": [f"role:{group}" for group in groups]}}}}
         )
         sources = ""
         for source in response['sources'].split(','):
@@ -90,7 +93,7 @@ def main():
         pinecone_index_name = st.sidebar.text_input('Pinecone index name')
     if not client_secrets:
         client_secrets = st.sidebar.text_area('Google auth client secrets (JSON)')
-    user_groups = st.sidebar.text_input(label="User groups", value="role:fin_users, role:engineering")
+    user_groups = st.sidebar.text_input(label="User groups", value="fin_users, engineering")
     collect_groups = lambda x : [f"{group.strip()}" for group in x.split(',') if group.strip() != ""]
     collected_groups = collect_groups(user_groups)
     groups_markdown = [f":blue-background[{group}]" for group in collected_groups]
