@@ -97,7 +97,8 @@ def query_rag_with_rbac(
         retriever_kwargs={
             "search_kwargs": {
                 "filter": {
-                    "roles": {"$in": [f"role:{group}" for group in groups]}}}}
+                    "roles": {"$in": [f"role:{group}" for group in groups]}}}},
+        reduce_k_below_max_tokens=True
     )
     answer = escape_markdown(response["answer"].strip())
     sources = [source.strip() for source in response["sources"].split(",")]
