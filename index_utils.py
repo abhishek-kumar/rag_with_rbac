@@ -19,14 +19,13 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # Pinecone
 from langchain.indexes.vectorstore import VectorStoreIndexWrapper
-from langchain_community.vectorstores import Pinecone as PineconeVectorStore
+from langchain_pinecone import PineconeVectorStore
 
 # Google Drive.
 from googleapiclient.discovery import Resource
 from googleapiclient.http import MediaIoBaseDownload
 
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
-
 
 @dataclass
 class Document:
@@ -40,6 +39,16 @@ class Document:
   # E.g. ["hr_users", "finance_users", "engineering_users", ...]
   read_access: List[str]
 
+  def __eq__(self, other):
+    return (
+      other.file_id == self.file_id and
+      other.name == self.name and
+      len(other.read_access) == len(self.read_access) and
+      all([item[0] == item[1] for item in zip(other.read_access, self.read_access)]))
+
+# An index manifest represents the state of an index at a point in time.
+# It stores metadata of all the documents in the index.
+IndexManifest = Dict[str, Document]
 
 def read_documents(
     folder_id: str,
@@ -150,15 +159,19 @@ def build_index(
     documents: List[Document],
     drive_service: Resource,
     pinecone_api_key: str,
-    pinecone_index_name: str) -> VectorStoreIndexWrapper:
+    pinecone_index_name: str) -> Tuple[VectorStoreIndexWrapper, IndexManifest]:
   """
   Builds the Pinecone index with the supplied documents.
   Returns a VectorStoreIndexWrapper that can be used to query the index.
+
+  Returns:
+    A tuple of:
+      1. VectorStoreIndexWrapper.
+      2. Manifest of the index with metadata of all documents in it.
   """
   os.environ['PINECONE_API_KEY'] = pinecone_api_key
   embedding=SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-  texts = []
-  metadatas = []
+  index_manifest: IndexManifest = {}
   indexable_documents = []
   for document in documents:
     print(f"Processing '{document.name}'.")
@@ -170,11 +183,10 @@ def build_index(
     pages = loader.load_and_split()
     for page_index, page in enumerate(pages):
       readable_page_content = page.page_content.replace("\n", " ")[:300]
-      texts.append(page.page_content)
-      page.metadata["read_access"] = ",".join(document.read_access)
+      page.metadata["read_access"] = ",".join(sorted(document.read_access))
       page.metadata["name"] = document.name
       page.metadata["file_id"] = document.file_id
-      metadatas.append(page.metadata)
+      index_manifest[document.file_id] = document
       indexable_documents.append(page)
       print(f'\tPage {page_index}: {readable_page_content} ...')
       for metadata_key, metadata_val in page.metadata.items():
@@ -184,8 +196,10 @@ def build_index(
   vectorstore = PineconeVectorStore(
       index_name=pinecone_index_name, embedding=embedding)
   vs = vectorstore.from_documents(
-      documents=documents, embedding=embedding, index_name=pinecone_index_name)
-  return VectorStoreIndexWrapper(vectorstore=vs), metadatas
+      documents=indexable_documents,
+      embedding=embedding,
+      index_name=pinecone_index_name)
+  return VectorStoreIndexWrapper(vectorstore=vs), index_manifest
 
 if __name__ == "__main__":
     print(f"Please run the notebook, which imports this module.")
