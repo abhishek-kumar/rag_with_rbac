@@ -43,7 +43,7 @@ class Document:
   modified_time: Optional[str] = None
 
   # Size in bytes, of the data in this document.
-  size: Optional[str] = None
+  size: Optional[int] = None
 
   def __eq__(self, other):
     return (
@@ -122,7 +122,7 @@ def read_documents(
       modified_time = item["modifiedTime"]
     size = None
     if "size" in item:
-      size = item["size"]
+      size = int(item["size"])
     doc = Document(
       file_id=item["id"],
       name=item["name"],
@@ -205,7 +205,7 @@ def build_index(
       if document.modified_time is not None:
         page.metadata["modified_time"] = document.modified_time
       if document.size is not None:
-        page.metadata["size"] = document.size
+        page.metadata["size"] = str(document.size)
       index_manifest[document.file_id] = document
       indexable_documents.append(page)
       print(f'\tPage {page_index}: {readable_page_content} ...')
