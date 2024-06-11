@@ -35,8 +35,10 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 _MODEL_NAME: str = "text-embedding-3-small"
 _MODEL_EMBEDDING_SIZE: int = 1536
 
-# Pinecone index maximum.
+# Pinecone index constants.
 _INDEX_MAXIMUM_METADATA_SIZE_BYTES = 35 * 1024  # The official limit is 40 kb.
+_MANIFEST_KEY = "index_manifest"
+
 
 
 @dataclass
@@ -236,6 +238,7 @@ def build_index(
       embedding=embedding,
       index_name=pinecone_index_name)
   # Write index_manifest to the index as well, at the 0th vector.
+  # Keep this in sync with de-serialization logic in get_index_manifest.
   serialized_manifest = pickle.dumps(index_manifest, protocol=0).decode()
   manifest_size = sys.getsizeof(serialized_manifest)
   manifest_vector = [0.0] * _MODEL_EMBEDDING_SIZE
@@ -250,14 +253,25 @@ def build_index(
   response = pc.Index(pinecone_index_name).upsert(
     vectors=[
       {
-        "id": "index_manifest", 
+        "id": _MANIFEST_KEY, 
         "values": manifest_vector, 
-        "metadata": {"index_manifest": serialized_manifest}
+        "metadata": {_MANIFEST_KEY: serialized_manifest}
       }
     ]
   )
   logging.info(f"Upsert index manifest {response=}.")
   return VectorStoreIndexWrapper(vectorstore=vs), index_manifest
+
+def get_index_manifest(
+    pinecone_api_key: str, pinecone_index_name: str) -> IndexManifest:
+  """Fetches the index manifest from Pinecone."""
+  pc = Pinecone(api_key=pinecone_api_key)
+  index = pc.Index(pinecone_index_name)
+  index_manifest_str = index.fetch([_MANIFEST_KEY]).vectors[_MANIFEST_KEY]["metadata"][_MANIFEST_KEY]
+  index_manifest_bytes = index_manifest_str.encode()
+  index_manifest = pickle.loads(index_manifest_bytes)
+  return index_manifest
+
 
 if __name__ == "__main__":
     print(f"Please run the notebook, which imports this module.")
