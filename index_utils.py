@@ -110,7 +110,7 @@ def read_documents(
   for item in items:
     # Found a folder.
     if "mimeType" in item and item["mimeType"].endswith(".folder"):
-      logging.info(f"Traversing sub-folder '{item['name']}'.")
+      logging.info(f"Reading from Google Drive: traversing sub-folder '{item['name']}'.")
       folder_results = read_documents(
         folder_id=item['id'],
         drive_service=drive_service,
@@ -122,12 +122,12 @@ def read_documents(
     if include_files_with_extensions is not None:
       if not any([item["name"].endswith(extension) for extension in include_files_with_extensions]):
         logging.warning(
-          f"Ignoring file '{item['name']}' "
+          f"Reading from Google Drive: ignoring file '{item['name']}' "
           f"because it doesn't match extensions {include_files_with_extensions}.")
         continue
     if "name" not in item or "id" not in item:
       logging.warning(
-        f"Ignoring file '{item['name']}' because the "
+        f"Reading from Google Drive: ignoring file '{item['name']}' because the "
         f"Google Drive API get response is malformed. {item=}")
       continue
     read_access = []
@@ -150,7 +150,7 @@ def read_documents(
       modified_time=modified_time,
       size=size)
     result.append(doc)
-    logging.info(f"Read document from Drive:\n\t{doc}")
+    logging.info(f"Reading from Google Drive: read document from Drive:\n\t{doc}")
   return result
   
 
@@ -163,7 +163,7 @@ def read_file(file_id: str, drive_service: Resource) -> bytes:
   while done is False:
     status, done = downloader.next_chunk()
   downloaded.seek(0)
-  logging.debug(f"Read {status.total_size} bytes from file id '{file_id}'.")
+  logging.debug(f"Reading from Google Drive: read {status.total_size} bytes from file id '{file_id}'.")
   return downloaded.read()
 
 def clear_index(
