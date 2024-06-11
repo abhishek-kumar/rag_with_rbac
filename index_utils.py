@@ -39,12 +39,20 @@ class Document:
   # E.g. ["hr_users", "finance_users", "engineering_users", ...]
   read_access: List[str]
 
+  # Last modified time of this file or document.
+  modified_time: Optional[str] = None
+
+  # Size in bytes, of the data in this document.
+  size: Optional[str] = None
+
   def __eq__(self, other):
     return (
       other.file_id == self.file_id and
       other.name == self.name and
       len(other.read_access) == len(self.read_access) and
-      all([item[0] == item[1] for item in zip(other.read_access, self.read_access)]))
+      all([item[0] == item[1] for item in zip(other.read_access, self.read_access)]) and
+      other.modified_time == self.modified_time and
+      other.size == self.size)
 
 # An index manifest represents the state of an index at a point in time.
 # It stores metadata of all the documents in the index.
@@ -72,7 +80,7 @@ def read_documents(
   files = drive_service.files().list(
       q=f"'{folder_id}' in parents and trashed=false",
       pageSize=10,
-      fields="nextPageToken, files(id, name, permissions, mimeType)").execute()
+      fields="nextPageToken, files(id, name, permissions, mimeType, modifiedTime, size)").execute()
   items = files.get('files', [])
 
   if not items:
@@ -109,10 +117,18 @@ def read_documents(
     if not read_access:
       # Assumption: if item does not have permissions, it is a public document.
       read_access = ["all_users"]
+    modified_time = None
+    if "modifiedTime" in item:
+      modified_time = item["modifiedTime"]
+    size = None
+    if "size" in item:
+      size = item["size"]
     doc = Document(
       file_id=item["id"],
       name=item["name"],
-      read_access=read_access)
+      read_access=read_access,
+      modified_time=modified_time,
+      size=size)
     result.append(doc)
     logging.info(f"Read document from Drive: {doc}")
   return result
@@ -186,6 +202,10 @@ def build_index(
       page.metadata["read_access"] = ",".join(sorted(document.read_access))
       page.metadata["name"] = document.name
       page.metadata["file_id"] = document.file_id
+      if document.modified_time is not None:
+        page.metadata["modified_time"] = document.modified_time
+      if document.size is not None:
+        page.metadata["size"] = document.size
       index_manifest[document.file_id] = document
       indexable_documents.append(page)
       print(f'\tPage {page_index}: {readable_page_content} ...')
