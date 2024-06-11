@@ -150,7 +150,7 @@ def read_documents(
       modified_time=modified_time,
       size=size)
     result.append(doc)
-    logging.info(f"Read document from Drive: {doc}")
+    logging.info(f"Read document from Drive:\n\t{doc}")
   return result
   
 
