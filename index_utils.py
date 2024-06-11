@@ -277,13 +277,16 @@ def delete_documents_from_index(
   deleted (the Documents in the manifest should have index_record_ids set
   from the result of the write to the index).
   """
-  record_ids_to_delete: Set[str] = []
+  record_ids_to_delete: Set[str] = set()
   for doc in to_be_deleted.values():
     if not doc.index_record_ids:
       raise ValueError(
         f"Document {doc.file_id} ({doc.name}) "
         "has no records in the index to delete.")
     record_ids_to_delete.update(doc.index_record_ids)
+  if not record_ids_to_delete:
+    logging.info(f"No records to delete for {to_be_deleted=}.")
+    return
   logging.info(
     f"Going to delete {len(to_be_deleted)} documents "
     f"({len(record_ids_to_delete)} records) "
