@@ -265,7 +265,11 @@ def get_index_manifest(
   """Fetches the index manifest from Pinecone."""
   pc = Pinecone(api_key=pinecone_api_key)
   index = pc.Index(pinecone_index_name)
-  index_manifest_str = index.fetch([_MANIFEST_KEY]).vectors[_MANIFEST_KEY]["metadata"][_MANIFEST_KEY]
+  vectors = index.fetch([_MANIFEST_KEY]).vectors
+  if not vectors or _MANIFEST_KEY not in vectors:
+    # Brand new index, or it was recently cleared so it has no data.
+    return {}
+  index_manifest_str = vectors[_MANIFEST_KEY]["metadata"][_MANIFEST_KEY]
   index_manifest_bytes = index_manifest_str.encode()
   index_manifest = pickle.loads(index_manifest_bytes)
   return index_manifest
