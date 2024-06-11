@@ -11,6 +11,7 @@ import pickle
 import sys
 import traceback
 
+import dataclasses
 from dataclasses import dataclass
 
 # Retrieval and indexing of web data.
@@ -59,7 +60,12 @@ class Document:
   # Size in bytes, of the data in this document.
   size: Optional[int] = None
 
+  # If this document has been written to the index,
+  # the list of record ids associated with this doc.
+  index_record_ids: Optional[Set[str]] = None
+
   def __eq__(self, other):
+    """Note that index_record_ids is not checked for equality."""
     return (
       other.file_id == self.file_id and
       other.name == self.name and
@@ -210,7 +216,8 @@ def add_documents_to_index(
       f"{[index_manifest[doc_id] for doc_id in existing_doc_ids]}")
     logging.error(msg)
     raise ValueError(msg)
-  indexable_documents = []
+  vectorstore = PineconeVectorStore(
+      index_name=pinecone_index_name, embedding=embedding)
   for document in documents:
     logging.info(f"Processing '{document.name}'.")
     if not os.path.isfile(document.name):
@@ -219,6 +226,7 @@ def add_documents_to_index(
       logging.info(f"\tDownloaded '{document.name}' from '{document.file_id}'.")
     loader = PyPDFLoader(document.name)
     pages = loader.load_and_split()
+    index_records = []
     for page_index, page in enumerate(pages):
       readable_page_content = page.page_content.replace("\n", " ")[:300]
       page.metadata["read_access"] = ",".join(sorted(document.read_access))
@@ -228,23 +236,30 @@ def add_documents_to_index(
         page.metadata["modified_time"] = document.modified_time
       if document.size is not None:
         page.metadata["size"] = str(document.size)
-      indexable_documents.append(page)
+      index_records.append(page)
       logging.debug(f'\tPage {page_index}: {readable_page_content} ...')
       for metadata_key, metadata_val in page.metadata.items():
         if metadata_key == "name":
           continue
         logging.debug(f'\t\t{metadata_key}: {metadata_val}')
-    index_manifest[document.file_id] = document
+    if index_records:
+      logging.info(
+        f"\tUploading {len(index_records)} records (for {document.file_id=}, {document.name=}) "
+        f"to the index '{pinecone_index_name}'.")
+      added_record_ids = vectorstore.add_documents(index_records) # one per page.
+      if len(added_record_ids) != len(index_records):
+        logging.error(
+          "\tError while uploading records to index. "
+          f"We attempted to write {len(index_records)} records, "
+          f"but got back confirmation for {len(added_record_ids)}. "
+          f"{added_record_ids=}")
+        # TODO: decide whether to raise an exception. For now, we continue.
+      logging.info(
+        f"\tUploaded {len(added_record_ids)} records (for {document.file_id=}, {document.name=}) "
+        f"to the index '{pinecone_index_name}'. {added_record_ids=}")
+      index_manifest[document.file_id] = dataclasses.replace(document, index_record_ids=set(added_record_ids))
     logging.info(f"Finished processing '{document.name}'.")
-  vectorstore = PineconeVectorStore(
-      index_name=pinecone_index_name, embedding=embedding)
-  logging.info(
-    f"Uploading {len(documents)} documents ({len(indexable_documents)} total pages) "
-    f"to the index '{pinecone_index_name}'.")
-  added_documents = vectorstore.add_documents(indexable_documents)
-  logging.info(
-    f"Uploaded {len(added_documents)} to the "
-    f"index {pinecone_index_name}. {added_documents=}")
+  
   # Update the index_manifest that tells the index what it holds.
   write_index_manifest(
     index_manifest=index_manifest,
@@ -253,12 +268,34 @@ def add_documents_to_index(
   return VectorStoreIndexWrapper(vectorstore=vectorstore), index_manifest
 
 def delete_documents_from_index(
-    document_ids: Set[str],
+    to_be_deleted: IndexManifest,
     pinecone_api_key: str,
     pinecone_index_name: str):
-  raise NotImplementedError(
-    f"Not implemented yet, https://docs.pinecone.io/guides/data/delete-data")
-  
+  """
+  Deletes the documents in provided manifest from the index.
+  They should've been previously written to the index, for them to be
+  deleted (the Documents in the manifest should have index_record_ids set
+  from the result of the write to the index).
+  """
+  record_ids_to_delete: Set[str] = []
+  for doc in to_be_deleted.values():
+    if not doc.index_record_ids:
+      raise ValueError(
+        f"Document {doc.file_id} ({doc.name}) "
+        "has no records in the index to delete.")
+    record_ids_to_delete.update(doc.index_record_ids)
+  logging.info(
+    f"Going to delete {len(to_be_deleted)} documents "
+    f"({len(record_ids_to_delete)} records) "
+    f"from the index '{pinecone_index_name}'.")
+  pc = Pinecone(api_key=pinecone_api_key)
+  index = pc.Index(pinecone_index_name)
+  delete_result = index.delete(ids=list(record_ids_to_delete))
+  if not delete_result:  # should be an empty dictionary on success
+    raise ValueError(
+      f"Failed to delete documents {to_be_deleted.keys()} "
+      f"(records {record_ids_to_delete}).\n"
+      f"{delete_result=}")  
 
 def get_index_manifest(
     pinecone_api_key: str, pinecone_index_name: str) -> IndexManifest:
@@ -303,28 +340,28 @@ def write_index_manifest(
 
 def compare_index_manifests(
     previous_manifest: IndexManifest,
-    new_manifest: IndexManifest) -> Tuple[Set[str], Set[str], Set[str]]:
+    new_manifest: IndexManifest) -> Tuple[IndexManifest, IndexManifest, IndexManifest]:
   """
   Compares the new manifest with the previous (existing) index manifest and returns a tuple of:
-    1. document ids to be deleted.
-    2. document ids to be added (new).
-    3. document ids that are to be modified.
+    1. Manifest of documents to be deleted.
+    2. Manifest of documents to be added (new).
+    3. Manifest of documents that are to be modified.
   """
   all_ids = set(previous_manifest.keys()).union(new_manifest.keys())
-  to_be_deleted: Set[str] = set()
-  to_be_added: Set[str] = set()
-  to_be_updated: Set[str] = set()
+  to_be_deleted: IndexManifest = {}
+  to_be_added: IndexManifest = {}
+  to_be_updated: IndexManifest = {}
   for doc_id in all_ids:
     if doc_id in previous_manifest and doc_id not in new_manifest:
-      to_be_deleted.add(doc_id)
+      to_be_deleted[doc_id] = previous_manifest[doc_id]
       continue
     if doc_id not in previous_manifest and doc_id in new_manifest:
-      to_be_added.add(doc_id)
+      to_be_added[doc_id] = new_manifest[doc_id]
       continue
     if previous_manifest[doc_id] == new_manifest[doc_id]:
       # Unchanged.
       continue
-    to_be_updated.add(doc_id)
+    to_be_updated[doc_id] = dataclasses.replace(new_manifest[doc_id], index_record_ids=previous_manifest[doc_id].index_record_ids)
   return (to_be_deleted, to_be_added, to_be_updated)
 
 if __name__ == "__main__":
