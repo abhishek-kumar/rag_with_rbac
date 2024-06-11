@@ -3,6 +3,7 @@ google-auth
 google-auth-oauthlib
 langchain
 langchain-community
+langchain-openai
 openai
 pinecone-client
 streamlit

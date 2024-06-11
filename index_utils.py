@@ -16,8 +16,8 @@ from dataclasses import dataclass
 # Retrieval and indexing of web data.
 from langchain.document_loaders import WebBaseLoader
 from langchain.document_loaders import PyPDFLoader
-from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
 
 # Pinecone
 from langchain.indexes.vectorstore import VectorStoreIndexWrapper
@@ -249,7 +249,7 @@ def build_index(
     vectors=[
       {
         "id": "index_manifest", 
-        "values": [0] * _MODEL_EMBEDDING_SIZE, 
+        "values": [0.0] * _MODEL_EMBEDDING_SIZE, 
         "metadata": {"index_manifest": serialized_manifest}
       }
     ]

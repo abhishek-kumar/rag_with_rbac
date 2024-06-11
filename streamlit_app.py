@@ -13,7 +13,7 @@ from streamlit_javascript import st_javascript
 from langchain_community.llms import OpenAI
 from langchain_community.vectorstores import Pinecone as PineconeVectorStore
 from langchain.indexes.vectorstore import VectorStoreIndexWrapper
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
 from pinecone import Pinecone
 
