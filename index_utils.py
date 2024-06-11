@@ -235,9 +235,11 @@ def build_index(
       documents=indexable_documents,
       embedding=embedding,
       index_name=pinecone_index_name)
-  # Write index_manifest to the index as well.
+  # Write index_manifest to the index as well, at the 0th vector.
   serialized_manifest = pickle.dumps(index_manifest, protocol=0).decode()
   manifest_size = sys.getsizeof(serialized_manifest)
+  manifest_vector = [0.0] * _MODEL_EMBEDDING_SIZE
+  manifest_vector[-1] = 0.01  # Pinecone disallows the 0-vector.
   if manifest_size >= _INDEX_MAXIMUM_METADATA_SIZE_BYTES:
     raise ValueError(
       f"There are too many files for the index. "
@@ -249,7 +251,7 @@ def build_index(
     vectors=[
       {
         "id": "index_manifest", 
-        "values": [0.0] * _MODEL_EMBEDDING_SIZE, 
+        "values": manifest_vector, 
         "metadata": {"index_manifest": serialized_manifest}
       }
     ]
