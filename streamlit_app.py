@@ -13,11 +13,16 @@ from streamlit_javascript import st_javascript
 from langchain_community.llms import OpenAI
 from langchain_community.vectorstores import Pinecone as PineconeVectorStore
 from langchain.indexes.vectorstore import VectorStoreIndexWrapper
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings
 
 from pinecone import Pinecone
 
 from typing import List, Tuple
+
+
+# OpenAIEmbeddings model.
+_MODEL_NAME: str = "text-embedding-3-small"
+
 
 def nav_to(url: str):
     js = f'window.open("{url}").then(r => window.parent.location.href);'
@@ -77,7 +82,7 @@ def get_vectorstore_indexwrapper(
     os.environ['PINECONE_API_KEY'] = pinecone_api_key
     pc = Pinecone(api_key=pinecone_api_key)
     index = pc.Index(pinecone_index_name)
-    embed = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    embed = OpenAIEmbeddings(model_name=_MODEL_NAME)
     vector_store = PineconeVectorStore(index, embed.embed_query, "text")
     return VectorStoreIndexWrapper(vectorstore=vector_store)
 

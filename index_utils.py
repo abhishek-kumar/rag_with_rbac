@@ -7,6 +7,8 @@ information such as groups that have read permission on that document.
 import io
 import logging
 import os
+import pickle
+import sys
 import traceback
 
 from dataclasses import dataclass
@@ -26,6 +28,15 @@ from googleapiclient.discovery import Resource
 from googleapiclient.http import MediaIoBaseDownload
 
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
+
+
+# OpenAIEmbeddings model.
+_MODEL_NAME: str = "text-embedding-3-small"
+_MODEL_EMBEDDING_SIZE: int = 1536
+
+# Pinecone index maximum.
+_INDEX_MAXIMUM_METADATA_SIZE_BYTES = 35 * 1024  # The official limit is 40 kb.
+
 
 @dataclass
 class Document:
@@ -158,7 +169,7 @@ def clear_index(
   os.environ['PINECONE_API_KEY'] = pinecone_api_key
   vectorstore = PineconeVectorStore(
       index_name=pinecone_index_name,
-      embedding=OpenAIEmbeddings(model="text-embedding-3-small"))
+      embedding=OpenAIEmbeddings(model=_MODEL_NAME))
   try:
     vectorstore.delete(delete_all=True)
   except Exception as ex:
@@ -186,7 +197,7 @@ def build_index(
       2. Manifest of the index with metadata of all documents in it.
   """
   os.environ['PINECONE_API_KEY'] = pinecone_api_key
-  embedding=OpenAIEmbeddings(model="text-embedding-3-small")
+  embedding=OpenAIEmbeddings(model=_MODEL_NAME)
   index_manifest: IndexManifest = {}
   indexable_documents = []
   for document in documents:
@@ -219,6 +230,22 @@ def build_index(
       documents=indexable_documents,
       embedding=embedding,
       index_name=pinecone_index_name)
+  # Write index_manifest to the index as well.
+  serialized_manifest = pickle.dumps(index_manifest, protocol=0).decode()
+  if sys.getsizeof(serialized_manifest) >= _INDEX_MAXIMUM_METADATA_SIZE_BYTES:
+    raise ValueError(
+      f"There are too many files for the index. "
+      f"The index manifest is {sys.getsizeof(serialized_manifest)} bytes, "
+      f"but the limit is {_INDEX_MAXIMUM_METADATA_SIZE_BYTES} bytes.")
+  vs.upsert(
+    vectors=[
+      {
+        "id": "index_manifest", 
+        "values": [0] * _MODEL_EMBEDDING_SIZE, 
+        "metadata": {"index_manifest": serialized_manifest}
+      }
+    ]
+  )
   return VectorStoreIndexWrapper(vectorstore=vs), index_manifest
 
 if __name__ == "__main__":

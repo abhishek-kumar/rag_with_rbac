@@ -5,7 +5,6 @@ langchain
 langchain-community
 openai
 pinecone-client
-sentence-transformers
 streamlit
 streamlit_javascript
 tiktoken
