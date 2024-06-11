@@ -22,6 +22,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # Pinecone
 from langchain.indexes.vectorstore import VectorStoreIndexWrapper
 from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone
 
 # Google Drive.
 from googleapiclient.discovery import Resource
@@ -201,11 +202,11 @@ def build_index(
   index_manifest: IndexManifest = {}
   indexable_documents = []
   for document in documents:
-    print(f"Processing '{document.name}'.")
+    logging.info(f"Processing '{document.name}'.")
     if not os.path.isfile(document.name):
       with open(f"{document.name}", 'wb') as fd:
         fd.write(read_file(file_id=document.file_id, drive_service=drive_service))
-      print(f"\tDownloaded '{document.name}' from '{document.file_id}'.")
+      logging.info(f"\tDownloaded '{document.name}' from '{document.file_id}'.")
     loader = PyPDFLoader(document.name)
     pages = loader.load_and_split()
     for page_index, page in enumerate(pages):
@@ -219,25 +220,32 @@ def build_index(
         page.metadata["size"] = str(document.size)
       index_manifest[document.file_id] = document
       indexable_documents.append(page)
-      print(f'\tPage {page_index}: {readable_page_content} ...')
+      logging.debug(f'\tPage {page_index}: {readable_page_content} ...')
       for metadata_key, metadata_val in page.metadata.items():
         if metadata_key == "name":
           continue
-        print(f'\t\t{metadata_key}: {metadata_val}')
+        logging.debug(f'\t\t{metadata_key}: {metadata_val}')
+    logging.info(f"Finished processing '{document.name}'.")
   vectorstore = PineconeVectorStore(
       index_name=pinecone_index_name, embedding=embedding)
+  logging.info(
+    f"Uploading {len(documents)} documents ({len(indexable_documents)} total pages) "
+    f"to the index '{pinecone_index_name}'.")
   vs = vectorstore.from_documents(
       documents=indexable_documents,
       embedding=embedding,
       index_name=pinecone_index_name)
   # Write index_manifest to the index as well.
   serialized_manifest = pickle.dumps(index_manifest, protocol=0).decode()
-  if sys.getsizeof(serialized_manifest) >= _INDEX_MAXIMUM_METADATA_SIZE_BYTES:
+  manifest_size = sys.getsizeof(serialized_manifest)
+  if manifest_size >= _INDEX_MAXIMUM_METADATA_SIZE_BYTES:
     raise ValueError(
       f"There are too many files for the index. "
-      f"The index manifest is {sys.getsizeof(serialized_manifest)} bytes, "
+      f"The index manifest is {manifest_size} bytes, "
       f"but the limit is {_INDEX_MAXIMUM_METADATA_SIZE_BYTES} bytes.")
-  vs.upsert(
+  logging.info(f"Writing index manifest of size {manifest_size} bytes to index [0].")
+  pc = Pinecone(api_key=pinecone_api_key)
+  response = pc.Index(pinecone_index_name).upsert(
     vectors=[
       {
         "id": "index_manifest", 
@@ -246,6 +254,7 @@ def build_index(
       }
     ]
   )
+  logging.info(f"Upsert index manifest {response=}.")
   return VectorStoreIndexWrapper(vectorstore=vs), index_manifest
 
 if __name__ == "__main__":
