@@ -185,7 +185,7 @@ def clear_index(
     f"Successfully deleted all documents in index {pinecone_index_name}.")
 
 
-def build_index(
+def add_documents_to_index(
     documents: List[Document],
     drive_service: Resource,
     pinecone_api_key: str,
@@ -201,7 +201,15 @@ def build_index(
   """
   os.environ['PINECONE_API_KEY'] = pinecone_api_key
   embedding=OpenAIEmbeddings(model=_MODEL_NAME)
-  index_manifest: IndexManifest = {}
+  index_manifest: IndexManifest = get_index_manifest(
+    pinecone_api_key=pinecone_api_key, pinecone_index_name=pinecone_index_name)
+  existing_doc_ids = set([doc.file_id for doc in documents]).intersection(index_manifest.keys())
+  if existing_doc_ids:
+    msg = (
+      f"Can't add documents {existing_doc_ids} -- already in the index. "
+      f"{[index_manifest[doc_id] for doc_id in existing_doc_ids]}")
+    logging.error(msg)
+    raise ValueError(msg)
   indexable_documents = []
   for document in documents:
     logging.info(f"Processing '{document.name}'.")
@@ -220,23 +228,51 @@ def build_index(
         page.metadata["modified_time"] = document.modified_time
       if document.size is not None:
         page.metadata["size"] = str(document.size)
-      index_manifest[document.file_id] = document
       indexable_documents.append(page)
       logging.debug(f'\tPage {page_index}: {readable_page_content} ...')
       for metadata_key, metadata_val in page.metadata.items():
         if metadata_key == "name":
           continue
         logging.debug(f'\t\t{metadata_key}: {metadata_val}')
+    index_manifest[document.file_id] = document
     logging.info(f"Finished processing '{document.name}'.")
   vectorstore = PineconeVectorStore(
       index_name=pinecone_index_name, embedding=embedding)
   logging.info(
     f"Uploading {len(documents)} documents ({len(indexable_documents)} total pages) "
     f"to the index '{pinecone_index_name}'.")
-  vs = vectorstore.from_documents(
-      documents=indexable_documents,
-      embedding=embedding,
-      index_name=pinecone_index_name)
+  added_documents = vectorstore.add_documents(indexable_documents)
+  logging.info(
+    f"Uploaded {len(added_documents)} to the "
+    f"index {pinecone_index_name}. {added_documents=}")
+  # Update the index_manifest that tells the index what it holds.
+  write_index_manifest(
+    index_manifest=index_manifest,
+    pinecone_api_key=pinecone_api_key,
+    pinecone_index_name=pinecone_index_name)
+  return VectorStoreIndexWrapper(vectorstore=vectorstore), index_manifest
+
+def delete_documents_from_index(
+    document_ids: Set[str],
+    pinecone_api_key: str,
+    pinecone_index_name: str):
+  raise NotImplementedError(
+    f"Not implemented yet, https://docs.pinecone.io/guides/data/delete-data")
+  
+
+def get_index_manifest(
+    pinecone_api_key: str, pinecone_index_name: str) -> IndexManifest:
+  """Fetches the index manifest from Pinecone."""
+  pc = Pinecone(api_key=pinecone_api_key)
+  index = pc.Index(pinecone_index_name)
+  index_manifest_str = index.fetch([_MANIFEST_KEY]).vectors[_MANIFEST_KEY]["metadata"][_MANIFEST_KEY]
+  index_manifest_bytes = index_manifest_str.encode()
+  index_manifest = pickle.loads(index_manifest_bytes)
+  return index_manifest
+
+def write_index_manifest(
+    index_manifest: IndexManifest, pinecone_api_key: str, pinecone_index_name: str):
+  """Writes (upserts) the provided index manifest to the index."""
   # Write index_manifest to the index as well, at the 0th vector.
   # Keep this in sync with de-serialization logic in get_index_manifest.
   serialized_manifest = pickle.dumps(index_manifest, protocol=0).decode()
@@ -260,18 +296,32 @@ def build_index(
     ]
   )
   logging.info(f"Upsert index manifest {response=}.")
-  return VectorStoreIndexWrapper(vectorstore=vs), index_manifest
 
-def get_index_manifest(
-    pinecone_api_key: str, pinecone_index_name: str) -> IndexManifest:
-  """Fetches the index manifest from Pinecone."""
-  pc = Pinecone(api_key=pinecone_api_key)
-  index = pc.Index(pinecone_index_name)
-  index_manifest_str = index.fetch([_MANIFEST_KEY]).vectors[_MANIFEST_KEY]["metadata"][_MANIFEST_KEY]
-  index_manifest_bytes = index_manifest_str.encode()
-  index_manifest = pickle.loads(index_manifest_bytes)
-  return index_manifest
-
+def compare_index_manifests(
+    previous_manifest: IndexManifest,
+    new_manifest: IndexManifest) -> Tuple[Set[str], Set[str], Set[str]]:
+  """
+  Compares the new manifest with the previous (existing) index manifest and returns a tuple of:
+    1. document ids to be deleted.
+    2. document ids to be added (new).
+    3. document ids that are to be modified.
+  """
+  all_ids = set(previous_manifest.keys()).union(new_manifest.keys())
+  to_be_deleted: Set[str] = set()
+  to_be_added: Set[str] = set()
+  to_be_updated: Set[str] = set()
+  for doc_id in all_ids:
+    if doc_id in previous_manifest and doc_id not in new_manifest:
+      to_be_deleted.add(doc_id)
+      continue
+    if doc_id not in previous_manifest and doc_id in new_manifest:
+      to_be_added.add(doc_id)
+      continue
+    if previous_manifest[doc_id] == new_manifest[doc_id]:
+      # Unchanged.
+      continue
+    to_be_updated.add(doc_id)
+  return (to_be_deleted, to_be_added, to_be_updated)
 
 if __name__ == "__main__":
     print(f"Please run the notebook, which imports this module.")
