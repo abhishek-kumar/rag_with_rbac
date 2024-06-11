@@ -14,7 +14,7 @@ from dataclasses import dataclass
 # Retrieval and indexing of web data.
 from langchain.document_loaders import WebBaseLoader
 from langchain.document_loaders import PyPDFLoader
-from langchain.embeddings import SentenceTransformerEmbeddings
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # Pinecone
@@ -158,7 +158,7 @@ def clear_index(
   os.environ['PINECONE_API_KEY'] = pinecone_api_key
   vectorstore = PineconeVectorStore(
       index_name=pinecone_index_name,
-      embedding=SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2"))
+      embedding=OpenAIEmbeddings(model="text-embedding-3-small"))
   try:
     vectorstore.delete(delete_all=True)
   except Exception as ex:
@@ -186,7 +186,7 @@ def build_index(
       2. Manifest of the index with metadata of all documents in it.
   """
   os.environ['PINECONE_API_KEY'] = pinecone_api_key
-  embedding=SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+  embedding=OpenAIEmbeddings(model="text-embedding-3-small")
   index_manifest: IndexManifest = {}
   indexable_documents = []
   for document in documents:
