@@ -392,7 +392,8 @@ def update_index_with_latest_documents(
     drive_service: Resource,
     pinecone_api_key: str,
     pinecone_index_name: str,
-    existing_index_manifest: Optional[IndexManifest] = None) -> IndexManifest:
+    existing_index_manifest: Optional[IndexManifest] = None,
+    write_index_manifest_after_update: bool = True) -> List[str]:
   """
   Updates the index with a provided list of all latest documents that the index
   should have.
@@ -400,7 +401,7 @@ def update_index_with_latest_documents(
   Internally, we will only do the minimum necessary modifications required
   to update the index.
 
-  Returns the updated IndexManifest after the changes are applied.
+  Returns a list of document ids updated (deleted, added or modified).
   """
   # index_manifest will be the updated index manifest after we're done.
   index_manifest: IndexManifest
@@ -443,7 +444,12 @@ def update_index_with_latest_documents(
       f"After updating, the index manifest is not as expected.\n"
       f"Expected documents {new_manifest.keys()};\n"
       f"Actual documents {index_manifest.keys()}.")
-  return index_manifest
+  if (to_be_deleted or to_be_added) and write_index_manifest_after_update:
+    write_index_manifest(
+      index_manifest=index_manifest,
+      pinecone_api_key=pinecone_api_key,
+      pinecone_index_name=pinecone_index_name)
+  return list(set(to_be_deleted.keys()).union(to_be_added.keys()))
   
 
 if __name__ == "__main__":
