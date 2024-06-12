@@ -47,7 +47,11 @@ def show_authentication_form_or_result(client_secrets: str, redirect_uri: str) -
     client_secrets_json = json.loads(client_secrets)
     flow = google_auth_oauthlib.flow.Flow.from_client_config(
         client_secrets_json,
-        scopes=["https://www.googleapis.com/auth/userinfo.email", "openid"],
+        scopes=[
+            "https://www.googleapis.com/auth/userinfo.email",
+            "openid",
+            "https://www.googleapis.com/auth/drive.readonly"
+        ],
         redirect_uri=redirect_uri,
     )
     if auth_code:

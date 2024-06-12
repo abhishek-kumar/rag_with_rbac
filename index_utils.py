@@ -15,8 +15,8 @@ import dataclasses
 from dataclasses import dataclass
 
 # Retrieval and indexing of web data.
-from langchain.document_loaders import WebBaseLoader
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 
