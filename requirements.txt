@@ -7,6 +7,8 @@ langchain-openai
 langchain-pinecone
 openai
 pinecone-client
+pypdf
 streamlit
 streamlit_javascript
 tiktoken
+transformers
