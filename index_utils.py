@@ -244,7 +244,7 @@ def add_documents_to_index(
     index_records = []
     for page_index, page in enumerate(pages):
       readable_page_content = page.page_content.replace("\n", " ")[:300]
-      page.metadata["read_access"] = ",".join(sorted(document.read_access))
+      page.metadata["read_access"] = list(sorted(document.read_access))
       page.metadata["name"] = document.name
       page.metadata["file_id"] = document.file_id
       if document.modified_time is not None:
