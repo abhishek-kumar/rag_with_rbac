@@ -195,34 +195,41 @@ def add_documents_to_index(
     documents: List[Document],
     drive_service: Resource,
     pinecone_api_key: str,
-    pinecone_index_name: str) -> Tuple[VectorStoreIndexWrapper, IndexManifest]:
+    pinecone_index_name: str,
+    existing_index_manifest: Optional[IndexManifest] = None) -> IndexManifest:
   """
   Builds the Pinecone index with the supplied documents.
-  Returns a VectorStoreIndexWrapper that can be used to query the index.
-
-  Returns:
-    A tuple of:
-      1. VectorStoreIndexWrapper.
-      2. Manifest of the index with metadata of all documents in it.
+  Returns the updated IndexManifest with the newly added documents.
   """
   os.environ['PINECONE_API_KEY'] = pinecone_api_key
   embedding=OpenAIEmbeddings(model=_MODEL_NAME)
-  index_manifest: IndexManifest = get_index_manifest(
-    pinecone_api_key=pinecone_api_key, pinecone_index_name=pinecone_index_name)
-  existing_doc_ids = set([doc.file_id for doc in documents]).intersection(index_manifest.keys())
+
+  # index_manifest will be the updated index manifest after we're done.
+  index_manifest: IndexManifest
+  if existing_index_manifest is not None:
+    index_manifest = {k:v for k,v in existing_index_manifest.items()}
+  else:
+    index_manifest = get_index_manifest(
+      pinecone_api_key=pinecone_api_key,
+      pinecone_index_name=pinecone_index_name)
+  existing_doc_ids = set([doc.file_id for doc in documents]).intersection(
+    index_manifest.keys())
   if existing_doc_ids:
     msg = (
       f"Can't add documents {existing_doc_ids} -- already in the index. "
       f"{[index_manifest[doc_id] for doc_id in existing_doc_ids]}")
     logging.error(msg)
     raise ValueError(msg)
+
   vectorstore = PineconeVectorStore(
       index_name=pinecone_index_name, embedding=embedding)
   for document in documents:
     logging.info(f"Processing '{document.name}'.")
     if not os.path.isfile(document.name):
       with open(f"{document.name}", 'wb') as fd:
-        fd.write(read_file(file_id=document.file_id, drive_service=drive_service))
+        fd.write(read_file(
+          file_id=document.file_id,
+          drive_service=drive_service))
       logging.info(f"\tDownloaded '{document.name}' from '{document.file_id}'.")
     loader = PyPDFLoader(document.name)
     pages = loader.load_and_split()
@@ -259,30 +266,42 @@ def add_documents_to_index(
         f"to the index '{pinecone_index_name}'. {added_record_ids=}")
       index_manifest[document.file_id] = dataclasses.replace(document, index_record_ids=set(added_record_ids))
     logging.info(f"Finished processing '{document.name}'.")
-  
   # Update the index_manifest that tells the index what it holds.
-  write_index_manifest(
-    index_manifest=index_manifest,
-    pinecone_api_key=pinecone_api_key,
-    pinecone_index_name=pinecone_index_name)
-  return VectorStoreIndexWrapper(vectorstore=vectorstore), index_manifest
+  #write_index_manifest(
+  #  index_manifest=index_manifest,
+  #  pinecone_api_key=pinecone_api_key,
+  #  pinecone_index_name=pinecone_index_name)
+  return index_manifest
 
 def delete_documents_from_index(
     to_be_deleted: IndexManifest,
     pinecone_api_key: str,
-    pinecone_index_name: str):
+    pinecone_index_name: str,
+    existing_index_manifest: Optional[IndexManifest] = None) -> IndexManifest:
   """
   Deletes the documents in provided manifest from the index.
   They should've been previously written to the index, for them to be
   deleted (the Documents in the manifest should have index_record_ids set
   from the result of the write to the index).
+
+  Returns the updated IndexManifest after deleted the requested documents.
   """
+  # index_manifest will be the updated index manifest after we're done.
+  index_manifest: IndexManifest
+  if existing_index_manifest is not None:
+    index_manifest = {k:v for k,v in existing_index_manifest.items()}
+  else:
+    index_manifest = get_index_manifest(
+      pinecone_api_key=pinecone_api_key,
+      pinecone_index_name=pinecone_index_name)
   record_ids_to_delete: Set[str] = set()
   for doc in to_be_deleted.values():
     if not doc.index_record_ids:
       raise ValueError(
         f"Document {doc.file_id} ({doc.name}) "
         "has no records in the index to delete.")
+    if doc.file_id not in index_manifest:
+      raise ValueError(f"Document requested for deletion is not in index manifest: {doc}")
     record_ids_to_delete.update(doc.index_record_ids)
   if not record_ids_to_delete:
     logging.info(f"No records to delete for {to_be_deleted=}.")
@@ -298,7 +317,8 @@ def delete_documents_from_index(
     raise ValueError(
       f"Failed to delete documents {to_be_deleted.keys()} "
       f"(records {record_ids_to_delete}).\n"
-      f"{delete_result=}")  
+      f"{delete_result=}")
+  return {k:v for k, v in index_manifest.items() if k not in to_be_deleted}
 
 def get_index_manifest(
     pinecone_api_key: str, pinecone_index_name: str) -> IndexManifest:
@@ -366,6 +386,53 @@ def compare_index_manifests(
       continue
     to_be_updated[doc_id] = dataclasses.replace(new_manifest[doc_id], index_record_ids=previous_manifest[doc_id].index_record_ids)
   return (to_be_deleted, to_be_added, to_be_updated)
+
+def update_index_with_latest_documents(
+    latest_documents: List[Document],
+    drive_service: Resource,
+    pinecone_api_key: str,
+    pinecone_index_name: str,
+    existing_index_manifest: Optional[IndexManifest] = None) -> IndexManifest:
+  """
+  Updates the index with a provided list of all latest documents that the index
+  should have.
+
+  Internally, we will only do the minimum necessary modifications required
+  to update the index.
+
+  Returns the updated IndexManifest after the changes are applied.
+  """
+  # index_manifest will be the updated index manifest after we're done.
+  index_manifest: IndexManifest
+  if existing_index_manifest is not None:
+    index_manifest = {k:v for k,v in existing_index_manifest.items()}
+  else:
+    index_manifest = get_index_manifest(
+      pinecone_api_key=pinecone_api_key,
+      pinecone_index_name=pinecone_index_name)
+  new_manifest: IndexManifest = {doc.file_id: doc for doc in latest_documents}
+  to_be_deleted, to_be_added, to_be_updated = compare_index_manifests(
+    previous_manifest=index_manifest, new_manifest=new_manifest)
+  to_be_deleted.update(to_be_updated)
+  to_be_added.update(to_be_updated)
+  index_manifest = delete_documents_from_index(
+    to_be_deleted=to_be_deleted,
+    pinecone_api_key=pinecone_api_key,
+    pinecone_index_name=pinecone_index_name,
+    existing_index_manifest=index_manifest)
+  index_manifest = add_documents_to_index(
+    documents=list(to_be_added.values()),
+    drive_service=drive_service,
+    pinecone_api_key=pinecone_api_key,
+    pinecone_index_name=pinecone_index_name,
+    existing_index_manifest=index_manifest)
+  if set(index_manifest.keys()).symmetric_difference(new_manifest.keys()):
+    raise ValueError(
+      f"After updating, the index manifest is not as expected.\n"
+      f"Expected documents {new_manifest.keys()};\n"
+      f"Actual documents {index_manifest.keys()}.")
+  return index_manifest
+  
 
 if __name__ == "__main__":
     print(f"Please run the notebook, which imports this module.")
