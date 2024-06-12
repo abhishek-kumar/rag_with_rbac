@@ -50,7 +50,8 @@ def show_authentication_form_or_result(client_secrets: str, redirect_uri: str) -
         scopes=[
             "https://www.googleapis.com/auth/userinfo.email",
             "openid",
-            "https://www.googleapis.com/auth/drive.readonly"
+            "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/drive.metadata.readonly"
         ],
         redirect_uri=redirect_uri,
     )
@@ -194,11 +195,18 @@ def main():
                     llm=llm,
                     index=index,
                     groups=collected_groups)
-                documents = index_utils.read_documents(
-                    folder_id=google_drive_root_folder_id,
-                    drive_service=st.session_state.drive_service,
-                    include_files_with_extensions=["pdf"])
-                logging.info(f"DEBUG: fetched the following documents from Google Drive: {documents}.")
+                # BEGIN: debug block (to be removed)
+                try:
+                    logging.info(f"Attempting to read files from drive.")
+                    documents = index_utils.read_documents(
+                        folder_id=google_drive_root_folder_id,
+                        drive_service=st.session_state.drive_service,
+                        include_files_with_extensions=["pdf"])
+                    logging.info(f"DEBUG: fetched the following documents from Google Drive: {documents}.")
+                except Exception as ex:
+                    logging.error(ex)
+                    logging.error(traceback.format_exc())
+                # END: debug block (to be removed)
                 response_markdown = f"**:blue[Copilot:]** *{answer}*\n\n"
                 response_markdown += f"**:blue[Sources]**\n\n"
                 for source in sources:
