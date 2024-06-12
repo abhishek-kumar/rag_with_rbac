@@ -4,8 +4,10 @@ import os
 import re
 import traceback
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import google_auth_oauthlib.flow
-from googleapiclient.discovery import build
+from googleapiclient.discovery import Resource, build
 
 import streamlit as st
 from streamlit_javascript import st_javascript
@@ -16,6 +18,8 @@ from langchain.indexes.vectorstore import VectorStoreIndexWrapper
 from langchain_openai import OpenAIEmbeddings
 
 from pinecone import Pinecone
+
+import index_utils
 
 from typing import List, Tuple
 
@@ -58,6 +62,12 @@ def show_authentication_form_or_result(client_secrets: str, redirect_uri: str) -
             version="v2",
             credentials=credentials,
         )
+        drive_service: Resource = build(
+            serviceName="drive",
+            version="v3",
+            credentials=credentials)
+        st.session_state["drive_service"] = drive_service
+        logging.info(f"Instantiated {drive_service=}.")
         user_info = user_info_service.userinfo().get().execute()
         assert user_info.get("email"), "Email not found in infos"
         st.session_state["google_auth_code"] = auth_code
@@ -155,7 +165,14 @@ def main():
     index = get_vectorstore_indexwrapper(
         pinecone_api_key=pinecone_api_key,
         pinecone_index_name=pinecone_index_name)
-
+    
+    # Google Drive.
+    google_drive_root_folder_id = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID", "")
+    if not google_drive_root_folder_id:
+        google_drive_root_folder_id = st.sidebar.text_input("Google Drive root folder id")
+    if not google_drive_root_folder_id:
+        st.warning('Please enter your Google Drive root folder id (that will be traversed to construct the vector store)', icon='⚠')
+        return
     user_groups = st.sidebar.text_input(label="User groups", value="fin_users, engineering")
     collect_groups = lambda x : [f"{group.strip()}" for group in x.split(',') if group.strip() != ""]
     collected_groups = collect_groups(user_groups)
@@ -173,6 +190,11 @@ def main():
                     llm=llm,
                     index=index,
                     groups=collected_groups)
+                documents = index_utils.read_documents(
+                    folder_id=google_drive_root_folder_id,
+                    drive_service=st.session_state.drive_service,
+                    include_files_with_extensions=["pdf"])
+                logging.info(f"DEBUG: fetched the following documents from Google Drive: {documents}.")
                 response_markdown = f"**:blue[Copilot:]** *{answer}*\n\n"
                 response_markdown += f"**:blue[Sources]**\n\n"
                 for source in sources:
