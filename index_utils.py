@@ -313,7 +313,7 @@ def delete_documents_from_index(
   pc = Pinecone(api_key=pinecone_api_key)
   index = pc.Index(pinecone_index_name)
   delete_result = index.delete(ids=list(record_ids_to_delete))
-  if not delete_result:  # should be an empty dictionary on success
+  if delete_result:  # should be an empty dictionary on success
     raise ValueError(
       f"Failed to delete documents {to_be_deleted.keys()} "
       f"(records {record_ids_to_delete}).\n"
