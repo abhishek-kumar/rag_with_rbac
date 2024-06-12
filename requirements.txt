@@ -4,6 +4,7 @@ google-auth-oauthlib
 langchain
 langchain-community
 langchain-openai
+langchain-pinecone
 openai
 pinecone-client
 streamlit
