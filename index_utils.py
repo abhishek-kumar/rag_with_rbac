@@ -413,19 +413,31 @@ def update_index_with_latest_documents(
   new_manifest: IndexManifest = {doc.file_id: doc for doc in latest_documents}
   to_be_deleted, to_be_added, to_be_updated = compare_index_manifests(
     previous_manifest=index_manifest, new_manifest=new_manifest)
+  logging.info(
+    "Comparing the index to latest document metadata, "
+    "the following updates will be performed:\n"
+    f"  - {len(to_be_deleted)} documents to be deleted {list(to_be_deleted.values())}\n"
+    f"  - {len(to_be_added)} new documents to be added {list(to_be_added.values())}\n"
+    f"  - {len(to_be_updated)} documents to be updated {list(to_be_updated.values())}")
   to_be_deleted.update(to_be_updated)
   to_be_added.update(to_be_updated)
-  index_manifest = delete_documents_from_index(
-    to_be_deleted=to_be_deleted,
-    pinecone_api_key=pinecone_api_key,
-    pinecone_index_name=pinecone_index_name,
-    existing_index_manifest=index_manifest)
-  index_manifest = add_documents_to_index(
-    documents=list(to_be_added.values()),
-    drive_service=drive_service,
-    pinecone_api_key=pinecone_api_key,
-    pinecone_index_name=pinecone_index_name,
-    existing_index_manifest=index_manifest)
+  if to_be_deleted:
+    logging.info(f"Going to delete documents from index {list(to_be_deleted.keys())}.")
+    index_manifest = delete_documents_from_index(
+      to_be_deleted=to_be_deleted,
+      pinecone_api_key=pinecone_api_key,
+      pinecone_index_name=pinecone_index_name,
+      existing_index_manifest=index_manifest)
+    logging.info(f"Successfully deleted documents from index {list(to_be_deleted.keys())}.")
+  if to_be_added:
+    logging.info(f"Going to add new documents to index {list(to_be_added.keys())}.")
+    index_manifest = add_documents_to_index(
+      documents=list(to_be_added.values()),
+      drive_service=drive_service,
+      pinecone_api_key=pinecone_api_key,
+      pinecone_index_name=pinecone_index_name,
+      existing_index_manifest=index_manifest)
+    logging.info(f"Successfully added new documents to index {list(to_be_added.keys())}.")
   if set(index_manifest.keys()).symmetric_difference(new_manifest.keys()):
     raise ValueError(
       f"After updating, the index manifest is not as expected.\n"
