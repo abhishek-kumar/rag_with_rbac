@@ -183,6 +183,7 @@ def main():
     collected_groups = collect_groups(user_groups)
     groups_markdown = [f":blue-background[{group}]" for group in collected_groups]
     st.sidebar.markdown(body=" ".join(groups_markdown))
+    collected_groups.append(index_utils.PUBLIC_USERS_GROUP)
     
     # Step 3: The main form that does RAG with RBAC.
     with st.form("ask_copilot_form"):

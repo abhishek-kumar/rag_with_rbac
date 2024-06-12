@@ -37,6 +37,7 @@ _MODEL_NAME: str = "text-embedding-3-small"
 _MODEL_EMBEDDING_SIZE: int = 1536
 
 # Pinecone index constants.
+PUBLIC_USERS_GROUP = "all_users"
 _INDEX_MAXIMUM_METADATA_SIZE_BYTES = 35 * 1024  # The official limit is 40 kb.
 _MANIFEST_KEY = "index_manifest"
 
@@ -102,6 +103,7 @@ def read_documents(
       pageSize=10,
       fields="nextPageToken, files(id, name, permissions, mimeType, modifiedTime, size)").execute()
   items = files.get('files', [])
+  logging.info(f"DEBUG: got items in folder {folder_id}: {items}")
 
   if not items:
       return []
@@ -135,7 +137,7 @@ def read_documents(
       for permission in item["permissions"]:
         if "displayName" not in permission:
           if "id" in permission and permission["id"] == "anyoneWithLink":
-            read_access = ["all_users"]
+            read_access = [PUBLIC_USERS_GROUP]
             break
           logging.error(
             f"Received {permission=} from Drive API without displayName in it. "
@@ -144,7 +146,7 @@ def read_documents(
         read_access.append(permission["displayName"])
     if not read_access:
       # Assumption: if item does not have permissions, it is a public document.
-      read_access = ["all_users"]
+      read_access = [PUBLIC_USERS_GROUP]
     modified_time = None
     if "modifiedTime" in item:
       modified_time = item["modifiedTime"]
