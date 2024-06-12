@@ -134,11 +134,14 @@ def read_documents(
     if "permissions" in item:
       for permission in item["permissions"]:
         if "displayName" not in permission:
+          if "id" in permission and permission["id"] == "anyoneWithLink":
+            read_access = ["all_users"]
+            break
           logging.error(
             f"Received {permission=} from Drive API without displayName in it. "
             "Check if you have authorized scopes to read this data.")
           continue
-        read_access.append(permission['displayName'])
+        read_access.append(permission["displayName"])
     if not read_access:
       # Assumption: if item does not have permissions, it is a public document.
       read_access = ["all_users"]
