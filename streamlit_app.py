@@ -92,7 +92,7 @@ def get_vectorstore_indexwrapper(
     os.environ['PINECONE_API_KEY'] = pinecone_api_key
     pc = Pinecone(api_key=pinecone_api_key)
     index = pc.Index(pinecone_index_name)
-    embed = OpenAIEmbeddings(model_name=_MODEL_NAME)
+    embed = OpenAIEmbeddings(model=_MODEL_NAME)
     vector_store = PineconeVectorStore(index, embed.embed_query, "text")
     return VectorStoreIndexWrapper(vectorstore=vector_store)
 
