@@ -187,7 +187,10 @@ def main():
     
     # Step 3: The main form that does RAG with RBAC.
     with st.form("ask_copilot_form"):
-        text = st.text_area(label='', value='Tell me about the quarterly projections.')
+        text = st.text_area(
+            label="Your question",
+            value="Tell me about the quarterly projections.",
+            label_visibility="hidden")
         submitted = st.form_submit_button(label="Submit")
         if submitted and llm and index:
             try:
