@@ -132,7 +132,7 @@ def check_for_updates(
             message += (
                 "My response is drawn from deleted sources "
                 f"{', '.join(sources_modified)}, "
-                "Since my response is stale, I need to "
+                "Since my response is stale, I need to update "
                 "my data before giving you an accurate response. ")
         files_modified = set([file.name for file in to_be_added.values()])
         if files_modified:
@@ -147,7 +147,7 @@ def check_for_updates(
             message += (
                 "My response is drawn from stale sources "
                 f"{', '.join(sources_modified)}, which have been modified recently. "
-                "Since my response is stale, I need to "
+                "Since my response is stale, I need to update "
                 "my data before giving you a more accurate response. ")
         if message:
             logging.info(message)
@@ -314,7 +314,8 @@ def main():
                             existing_index_manifest=index_manifest,
                             write_index_manifest_after_update=True)
                         num_index_updates += 1
-                    st.success(f"Updated the index. {docs_updated=}.")
+                    logging.info(f"Updated the index. {docs_updated=}")
+                    st.success(f"Updated the index. {len(docs_updated)} documents updated.")
                     answer, sources, index_manifest, updates, latest_documents = query_rag_and_check_drive_for_updates(
                         input_text=text,
                         llm=llm,
