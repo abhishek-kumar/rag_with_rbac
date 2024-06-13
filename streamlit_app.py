@@ -141,7 +141,7 @@ def check_for_updates(
                 "which might have a better response to your query, "
                 "but I haven't processed them yet: "
                 f"{', '.join(files_modified)}. ")
-        files_modified = set([file.name for file in to_be_updated.values()])
+        files_modified = set([existing_index_manifest[file_id].name for file_id in to_be_updated])
         sources_modified = set(source_set).intersection(files_modified)
         if sources_modified:
             message += (
