@@ -5,7 +5,7 @@ LLM App using retrieval augmented generation (RAG) with role based access contro
 
 [![Demo video](https://img.youtube.com/vi/wDjuCfIiIdQ/0.jpg)](https://www.youtube.com/watch?v=wDjuCfIiIdQ)
 
-  * ![video link](https://www.youtube.com/watch?v=wDjuCfIiIdQ)
+  * [video link](https://www.youtube.com/watch?v=wDjuCfIiIdQ)
 
 
 ## Try out the hosted app.
