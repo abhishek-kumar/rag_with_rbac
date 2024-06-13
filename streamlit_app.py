@@ -12,9 +12,10 @@ from googleapiclient.discovery import Resource, build
 import streamlit as st
 from streamlit_javascript import st_javascript
 
-from langchain_community.llms import OpenAI
+
 from langchain_community.vectorstores import Pinecone as PineconeVectorStore
 from langchain.indexes.vectorstore import VectorStoreIndexWrapper
+from langchain_openai import OpenAI
 from langchain_openai import OpenAIEmbeddings
 
 from pinecone import Pinecone

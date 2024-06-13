@@ -143,7 +143,7 @@ def read_documents(
             f"Received {permission=} from Drive API without displayName in it. "
             "Check if you have authorized scopes to read this data.")
           continue
-        read_access.append(permission["displayName"])
+        read_access.append(permission["displayName"].lower())
     if not read_access:
       # Assumption: if item does not have permissions, it is a public document.
       read_access = [PUBLIC_USERS_GROUP]
