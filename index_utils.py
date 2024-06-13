@@ -37,10 +37,11 @@ _MODEL_NAME: str = "text-embedding-3-small"
 _MODEL_EMBEDDING_SIZE: int = 1536
 
 # Pinecone index constants.
-PUBLIC_USERS_GROUP = "all_users"
-_INDEX_MAXIMUM_METADATA_SIZE_BYTES = 35 * 1024  # The official limit is 40 kb.
-_MANIFEST_KEY = "index_manifest"
+PUBLIC_USERS_GROUP: str = "all_users"
+_INDEX_MAXIMUM_METADATA_SIZE_BYTES: int = 35 * 1024  # The official limit is 40 kb.
+_MANIFEST_KEY: str = "index_manifest"
 
+_MODULE_NAME: str = "index_utils"
 
 
 @dataclass
@@ -337,6 +338,8 @@ def get_index_manifest(
     # Brand new index, or it was recently cleared so it has no data.
     return {}
   index_manifest_str = vectors[_MANIFEST_KEY]["metadata"][_MANIFEST_KEY]
+  index_manifest_str = index_manifest_str.replace(
+    f"rag_with_rbac.{_MODULE_NAME}", _MODULE_NAME)
   index_manifest_bytes = index_manifest_str.encode()
   index_manifest = pickle.loads(index_manifest_bytes)
   return index_manifest
