@@ -206,7 +206,7 @@ def query_rag_and_check_drive_for_updates(
             groups=groups)
     st.success(
         body="Successfully fetched the results and prepared a response.",
-        icon=":material/search_check_2:")
+        icon=":material/check_circle:")
 
     with st.spinner(f"Analyzing sources for correctness: {', '.join(sources)}"):
         index_manifest = index_utils.get_index_manifest(
