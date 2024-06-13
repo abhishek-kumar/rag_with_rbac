@@ -274,13 +274,10 @@ def add_documents_to_index(
       logging.info(
         f"\tUploaded {len(added_record_ids)} records (for {document.file_id=}, {document.name=}) "
         f"to the index '{pinecone_index_name}'. {added_record_ids=}")
+      logging.info(
+        f"\tFirst page metadata: {index_records[0].metadata}")
       index_manifest[document.file_id] = dataclasses.replace(document, index_record_ids=set(added_record_ids))
     logging.info(f"Finished processing '{document.name}'.")
-  # Update the index_manifest that tells the index what it holds.
-  #write_index_manifest(
-  #  index_manifest=index_manifest,
-  #  pinecone_api_key=pinecone_api_key,
-  #  pinecone_index_name=pinecone_index_name)
   return index_manifest
 
 def delete_documents_from_index(
