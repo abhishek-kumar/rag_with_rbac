@@ -27,9 +27,9 @@ Please see the demo video for more.
 
 ## Demo.
 
-[![Demo video](https://img.youtube.com/vi/wDjuCfIiIdQ/0.jpg)](https://www.youtube.com/watch?v=wDjuCfIiIdQ)
+[![Demo video](https://img.youtube.com/vi/zKCrEXEBQGY/0.jpg)](https://www.youtube.com/watch?v=zKCrEXEBQGY)
 
-  * [video link](https://www.youtube.com/watch?v=wDjuCfIiIdQ)
+  * [video link](https://www.youtube.com/watch?v=zKCrEXEBQGY)
 
 
 ## Try out the hosted app.
