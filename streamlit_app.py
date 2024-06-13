@@ -128,27 +128,30 @@ def check_for_updates(
         source_set = set(sources)
         files_modified = set([file.name for file in to_be_deleted.values()])
         sources_modified = set(source_set).intersection(files_modified)
+        delimiter = ""
         if sources_modified:
             message += (
                 "My response is drawn from deleted sources "
                 f"{', '.join(sources_modified)}, "
                 "Since my response is stale, I need to update "
-                "my data before giving you an accurate response. ")
+                "my data before giving you an accurate response.")
+            delimiter = " "
         files_modified = set([file.name for file in to_be_added.values()])
         if files_modified:
             message += (
-                "There are new file(s) that have been recently added "
+                f"{delimiter}There are new file(s) that have been recently added "
                 "which might have a better response to your query, "
                 "but I haven't processed them yet: "
-                f"{', '.join(files_modified)}. ")
+                f"{', '.join(files_modified)}.")
+            delimiter = " "
         files_modified = set([existing_index_manifest[file_id].name for file_id in to_be_updated])
         sources_modified = set(source_set).intersection(files_modified)
         if sources_modified:
             message += (
-                "My response is drawn from stale sources "
+                f"{delimiter}My response is drawn from stale sources "
                 f"{', '.join(sources_modified)}, which have been modified recently. "
                 "Since my response is stale, I need to update "
-                "my data before giving you a more accurate response. ")
+                "my data before giving you a more accurate response.")
         if message:
             logging.info(message)
             return message
@@ -319,7 +322,7 @@ def main():
                             "in Google Drive. Please check back later after "
                             "all changes are done.")
                     st.markdown(
-                        body=f"**:blue[Copilot:]** *{updates}*\n\n",
+                        body=f"**:blue[Copilot:]** *{escape_markdown(updates)}*\n\n",
                         help="Response from the LLM with RAC, applying role based access controls.")
                     with st.spinner("Updating the index with recent file changes..."):
                         docs_updated = index_utils.update_index_with_latest_documents(
