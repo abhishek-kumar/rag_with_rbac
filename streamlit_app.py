@@ -85,8 +85,7 @@ def show_authentication_form_or_result(client_secrets: str, redirect_uri: str) -
     logging.info(f"Authenticating user. {authorization_url=}, {state=}.")
     st.link_button(
         label="Sign in with Google",
-        url=authorization_url,
-        help=f"Redirecting for authentication to '{authorization_url}' ...")
+        url=authorization_url)
 
 @st.cache_resource(ttl=600)
 def get_llm(openai_api_key) -> OpenAI:
@@ -130,7 +129,7 @@ def query_rag_with_rbac(
 
 
 def main():
-    st.title('LLM App: RAG with RBAC v0.1')
+    st.title('LLM App: RAG with RBAC v0.2')
 
     # Step 1: handle authentication.
     if not is_user_authenticated():
@@ -189,7 +188,7 @@ def main():
     # Step 3: The main form that does RAG with RBAC.
     with st.form("ask_copilot_form"):
         text = st.text_area(label='', value='Tell me about the quarterly projections.')
-        submitted = st.form_submit_button('Submit')
+        submitted = st.form_submit_button(label="Submit")
         if submitted and llm and index:
             try:
                 answer, sources = query_rag_with_rbac(
@@ -199,12 +198,50 @@ def main():
                     groups=collected_groups)
                 # BEGIN: debug block (to be removed)
                 try:
-                    logging.info(f"Attempting to read files from drive.")
+                    logging.warning(f"Attempting to read files from drive.")
                     documents = index_utils.read_documents(
                         folder_id=google_drive_root_folder_id,
                         drive_service=st.session_state.drive_service,
                         include_files_with_extensions=["pdf"])
-                    logging.info(f"DEBUG: fetched the following documents from Google Drive: {documents}.")
+                    logging.warning(f"DEBUG: fetched {len(documents)} documents from Google Drive.")
+                    logging.info(f"{documents}")
+                    new_manifest: index_utils.IndexManifest = {doc.file_id: doc for doc in documents}
+                    to_be_deleted, to_be_added, to_be_updated = index_utils.compare_index_manifests(
+                        previous_manifest=index_utils.get_index_manifest(
+                            pinecone_api_key=pinecone_api_key,
+                            pinecone_index_name=pinecone_index_name),
+                        new_manifest=new_manifest)
+                    logging.info(
+                        "Comparing the index to latest document metadata, "
+                        "the following updates are necessary:\n"
+                        f"  - {len(to_be_deleted)} documents to be deleted {list(to_be_deleted.values())}\n"
+                        f"  - {len(to_be_added)} new documents to be added {list(to_be_added.values())}\n"
+                        f"  - {len(to_be_updated)} documents to be updated {list(to_be_updated.values())}")
+                    files_modified = set()
+                    source_set = set(sources)
+                    files_modified = set([file.name for file in to_be_deleted.values()])
+                    sources_modified = set(source_set).difference(files_modified)
+                    if sources_modified:
+                        logging.warning(
+                            "My response is drawn from deleted sources "
+                            f"{', '.join(sources_modified)}, "
+                            "Since my response is stale, I need to "
+                            "my data before giving you an accurate response.")
+                    files_modified = set([file.name for file in to_be_added.values()])
+                    if files_modified:
+                        logging.warning(
+                            "There are new file(s) that have been recently added "
+                            "which might have a better response to your query, "
+                            "but I haven't processed them yet: "
+                            f"{', '.join(files_modified)}, ")
+                    files_modified = set([file.name for file in to_be_updated.values()])
+                    sources_modified = set(source_set).difference(files_modified)
+                    if sources_modified:
+                        logging.warning(
+                            "My response is drawn from stale sources "
+                            f"{', '.join(sources_modified)}, which have been modified recently. "
+                            "Since my response is stale, I need to "
+                            "my data before giving you a more accurate response.")
                 except Exception as ex:
                     logging.error(ex)
                     logging.error(traceback.format_exc())
@@ -224,6 +261,7 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.getLogger().setLevel(logging.INFO)
     try:
         main()
     except Exception as ex:
