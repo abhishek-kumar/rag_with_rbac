@@ -198,15 +198,17 @@ def query_rag_and_check_drive_for_updates(
     latest_documents: List[index_utils.Document]
     updates: Optional[str]
 
-    with st.spinner(text="Invoking LLM..."):
+    with st.spinner(text="Asking the LLM..."):
         answer, sources = query_rag_with_rbac(
             input_text=input_text,
             llm=llm,
             index=index,
             groups=groups)
-    st.success(body="Successfully retrieved a response from the LLM.")
+    st.success(
+        body="Successfully fetched the results and prepared a response.",
+        icon=":material/search_check_2:")
 
-    with st.spinner(f"Analyzing sources {', '.join(sources)}"):
+    with st.spinner(f"Analyzing sources for correctness: {', '.join(sources)}"):
         index_manifest = index_utils.get_index_manifest(
             pinecone_api_key=pinecone_api_key,
             pinecone_index_name=pinecone_index_name)
@@ -218,7 +220,9 @@ def query_rag_and_check_drive_for_updates(
             sources=sources,
             latest_documents=latest_documents,
             existing_index_manifest=index_manifest)
-    st.success(body="Done analyzing sources.")
+    st.success(
+        body="Done analyzing sources for correctness.",
+        icon=":material/inventory:")
     return (answer, sources, index_manifest, updates, latest_documents)
 
 def main():
@@ -231,7 +235,8 @@ def main():
         if not client_secrets:
             client_secrets = st.sidebar.text_area('Google auth client secrets (JSON)')
         if not client_secrets:
-            st.warning('Please enter Google Auth secrets JSON (in sidebar)!', icon='⚠')
+            st.warning("Please enter Google Auth secrets JSON (in sidebar)!",
+                       icon=":material/edit_note:")
             return
         show_authentication_form_or_result(client_secrets, redirect_uri)
         if not is_user_authenticated():
@@ -244,7 +249,8 @@ def main():
     if not openai_api_key:
         openai_api_key = st.sidebar.text_input('OpenAI API key', type='password')
     if not openai_api_key.startswith('sk-'):
-        st.warning('Please enter your OpenAI API key!', icon='⚠')
+        st.warning("Please enter your OpenAI API key!",
+                   icon=":material/edit_note:")
         return
     llm = get_llm(openai_api_key=openai_api_key)    
 
@@ -252,13 +258,15 @@ def main():
     if not pinecone_api_key:
         pinecone_api_key = st.sidebar.text_input('Pinecone API key', type='password')
     if not pinecone_api_key:
-        st.warning('Please enter your Pinecone API key!', icon='⚠')
+        st.warning("Please enter your Pinecone API key!",
+                   icon=":material/edit_note:")
         return
     pinecone_index_name = os.environ.get("PINECONE_INDEX_NAME", "")    
     if not pinecone_index_name:
         pinecone_index_name = st.sidebar.text_input('Pinecone index name')
     if not pinecone_index_name:
-        st.warning('Please enter your Pinecone index name!', icon='⚠')
+        st.warning("Please enter your Pinecone index name!",
+                   icon=":material/edit_note:")
         return
     index = get_vectorstore_indexwrapper(
         pinecone_api_key=pinecone_api_key,
@@ -269,14 +277,22 @@ def main():
     if not google_drive_root_folder_id:
         google_drive_root_folder_id = st.sidebar.text_input("Google Drive root folder id")
     if not google_drive_root_folder_id:
-        st.warning('Please enter your Google Drive root folder id (that will be traversed to construct the vector store)', icon='⚠')
+        st.warning(
+            "Please enter your Google Drive root folder id "
+            "(that will be traversed to construct the vector store)",
+            icon=":material/edit_note:")
         return
-    user_groups = st.sidebar.text_input(label="User groups", value="fin_users, engineering")
+    
+    # Collect the groups that the user is a part of.
+    user_groups = st.sidebar.text_input(label="User groups", value="fin_users, eng_users")
     collect_groups = lambda x : [f"{group.strip()}" for group in x.split(',') if group.strip() != ""]
     collected_groups = collect_groups(user_groups)
     groups_markdown = [f":blue-background[{group}]" for group in collected_groups]
     st.sidebar.markdown(body=" ".join(groups_markdown))
     collected_groups.append(index_utils.PUBLIC_USERS_GROUP)
+    if email:
+        collected_groups.append(email.split("@")[0])
+    logging.info(f"Full list of user's read_access membership set: {collected_groups}.")
     
     # Step 3: The main form that does RAG with RBAC.
     with st.form("ask_copilot_form"):
@@ -315,7 +331,8 @@ def main():
                             write_index_manifest_after_update=True)
                         num_index_updates += 1
                     logging.info(f"Updated the index. {docs_updated=}")
-                    st.success(f"Updated the index. {len(docs_updated)} documents updated.")
+                    st.success(f"Updated the knowledge base with {len(docs_updated)} recent change(s).",
+                               icon=":material/drive_folder_upload:")
                     answer, sources, index_manifest, updates, latest_documents = query_rag_and_check_drive_for_updates(
                         input_text=text,
                         llm=llm,
@@ -334,7 +351,7 @@ def main():
                     body=response_markdown,
                     help="Response from the LLM with RAC, applying role based access controls.")                
             except Exception as ex:
-                st.warning(f"LLM/index error: {str(ex)}")
+                st.warning(f"LLM/index error: {str(ex)}", icon=":material/error:")
                 logging.warning(traceback.format_exc())
 
 
