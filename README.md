@@ -1,5 +1,6 @@
-LLMs use vector databases for RAG (retrieval augmented generation), but the vector DB doesn't natively support role based access controls (RBAC).
-Moreover, change management is hard - how do you keep your index up to date with your files and metadata? This demo shows an implementation of how to do this. 
+LLM applications typically use vector databases for RAG (retrieval augmented generation), but most vector databases today don't
+natively support role based access controls (RBAC). They do support multi-tenancy and some access protections but these are not intended for the application layer, but rather for service accounts and infrastructure layers.
+With role based access control (RBAC), change management is non-trivial - how do we keep the index up to date with files and metadata in storage (Google Drive or elsewhere)? This demo shows an implementation of how to do this. 
 
 # RAG with RBAC
 
