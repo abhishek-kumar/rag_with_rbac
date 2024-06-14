@@ -1,10 +1,16 @@
+# RAG with RBAC.
 LLM applications typically use vector databases for RAG (retrieval augmented generation), but most vector databases today don't
 natively support role based access controls (RBAC). They do support multi-tenancy and some access protections but these are not intended for the application layer, they are intended for service accounts and infrastructure layers. With role based access control (RBAC), change management is non-trivial - how do we keep the index up to date with files and metadata in storage (Google Drive or elsewhere)? This demo shows an implementation of how to do this. 
 
-# RAG with RBAC.
-
 ## LLM App on Streamlit.
 This is an LLM App using retrieval augmented generation (RAG) with role based access controls (RBAC) on your data.
+
+## Demo.
+*(click the thumbnail below to see a video demo of the app in action)*
+
+[![Demo video](https://img.youtube.com/vi/zKCrEXEBQGY/0.jpg)](https://www.youtube.com/watch?v=zKCrEXEBQGY)
+
+*[video link](https://www.youtube.com/watch?v=zKCrEXEBQGY)*
 
 ## RAG Implementation.
 The large language model being used here is OpenAI (default - GPT3.5).
@@ -24,15 +30,6 @@ We don't update the index unless it is necessary to do so.
   3. If files on Drive have been updated that have no bearing to the user's query or response, we do not require an index update which is an expensive process. An offline system could periodically process these updates - the scheduling interval can be configured to achieve the right cost vs accuracy trade-off.
 
 Please see the demo video for more.
-
-## Demo.
-
-*(click the thumbnail below to see a video demo of the app in action)*
-
-[![Demo video](https://img.youtube.com/vi/zKCrEXEBQGY/0.jpg)](https://www.youtube.com/watch?v=zKCrEXEBQGY)
-
-*[video link](https://www.youtube.com/watch?v=zKCrEXEBQGY)*
-
 
 ## Try out the hosted app.
 https://rag-rbac.streamlit.app/
