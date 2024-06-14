@@ -27,9 +27,11 @@ Please see the demo video for more.
 
 ## Demo.
 
+*(click the thumbnail below to see a video demo of the app in action)*
+
 [![Demo video](https://img.youtube.com/vi/zKCrEXEBQGY/0.jpg)](https://www.youtube.com/watch?v=zKCrEXEBQGY)
 
-  * [video link](https://www.youtube.com/watch?v=zKCrEXEBQGY)
+*[video link](https://www.youtube.com/watch?v=zKCrEXEBQGY)*
 
 
 ## Try out the hosted app.
