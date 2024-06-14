@@ -182,6 +182,7 @@ def query_rag_with_rbac(
     )
     answer = escape_markdown(response["answer"].strip())
     sources = [source.strip() for source in response["sources"].split(",")]
+    sources = [source for source in sources if source != ""]
     logging.warning(f"DEBUG: query_rag_with_rbac: user groups {groups}.")
     logging.warning(f"DEBUG: query_rag_with_rbac: answer:\n{answer}")
     logging.warning(f"DEBUG: query_rag_with_rbac: sources:\n{sources}")
@@ -223,9 +224,14 @@ def query_rag_and_check_drive_for_updates(
             sources=sources,
             latest_documents=latest_documents,
             existing_index_manifest=index_manifest)
-    st.success(
-        body="Done analyzing sources for correctness.",
-        icon=":material/inventory:")
+    if updates is None:
+        st.success(
+            body="Done analyzing sources for correctness.",
+            icon=":material/inventory:")
+    else:
+        st.warning(
+            body="Done analyzing sources for correctness.",
+            icon=":material/sync_problem:")
     return (answer, sources, index_manifest, updates, latest_documents)
 
 def main():
@@ -345,11 +351,10 @@ def main():
                         pinecone_index_name=pinecone_index_name,
                         google_drive_root_folder_id=google_drive_root_folder_id)
                 response_markdown = f"**:blue[Copilot:]** *{answer}*\n\n"
-                response_markdown += f"**:blue[Sources]**\n\n"
-                for source in sources:
-                    response_markdown += f"  * :blue-background[{source}]\n"
-                if not sources:
-                    response_markdown += f"  :blue-background[None found.]\n"                
+                if sources:
+                    response_markdown += f"**:blue[Sources]**\n\n"
+                    for source in sources:
+                        response_markdown += f"  * :blue-background[{source}]\n"              
                 st.markdown(
                     body=response_markdown,
                     help="Response from the LLM with RAC, applying role based access controls.")                
