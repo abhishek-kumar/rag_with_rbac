@@ -162,9 +162,13 @@ def check_for_updates(
             f"  - {len(to_be_added)} new documents to be added.\n"
             f"  - {len(to_be_updated)} documents to be updated.")
         sources_to_be_deleted: index_utils.IndexManifest = {
-            doc.file_id: doc for doc in to_be_deleted.values() if doc.name in source_set}
+            doc.file_id: doc for doc in to_be_deleted.values()
+            if doc.name in source_set
+        }
         sources_to_be_updated: index_utils.IndexManifest = {
-            doc.file_id: doc for doc in to_be_updated.values() if doc.name in source_set}
+            doc.file_id: doc for doc in to_be_updated.values()
+            if existing_index_manifest[doc.file_id].name in source_set
+        }
         return (sources_to_be_deleted, to_be_added, sources_to_be_updated)
     except Exception as ex:
         logging.error(ex)
