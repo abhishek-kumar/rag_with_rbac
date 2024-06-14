@@ -41,7 +41,8 @@ def escape_markdown(text: str) -> str:
 def get_justification_message_for_updating_index(
         sources_to_be_deleted: index_utils.IndexManifest,
         to_be_added: index_utils.IndexManifest,
-        sources_to_be_updated: index_utils.IndexManifest) -> str:
+        sources_to_be_updated: index_utils.IndexManifest,
+        existing_index_manifest: index_utils.IndexManifest) -> str:
     """
     Generates a user-readable message justifying why we need to
     update our index before answering their question.
@@ -63,9 +64,13 @@ def get_justification_message_for_updating_index(
             f"{', '.join([doc.name for doc in to_be_added.values()])}.")
         delimiter = " "
     if sources_to_be_updated:
+        old_file_names = [
+            existing_index_manifest[doc.file_id].name
+            for doc in sources_to_be_updated.values()
+        ]
         message += (
             f"{delimiter}My response is drawn from stale sources "
-            f"{', '.join([doc.name for doc in sources_to_be_updated])}, "
+            f"{', '.join(old_file_names)}, "
             "which have been modified recently. "
             "Since my response is stale, I need to update "
             "my data before giving you a more accurate response.")
@@ -262,7 +267,8 @@ def query_rag_and_check_drive_for_updates(
         updates = get_justification_message_for_updating_index(
             sources_to_be_deleted=sources_to_be_deleted,
             to_be_added=to_be_added,
-            sources_to_be_updated=sources_to_be_updated)
+            sources_to_be_updated=sources_to_be_updated,
+            existing_index_manifest=index_manifest)
         st.warning(
             body="Done analyzing sources for correctness.",
             icon=":material/sync_problem:")
