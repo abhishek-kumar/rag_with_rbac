@@ -38,6 +38,42 @@ def escape_markdown(text: str) -> str:
     result = re.sub(match_md, "\g<1>\\\\\g<4>", text)
     return result.replace("$", "\$")
 
+def get_justification_message_for_updating_index(
+        sources_to_be_deleted: index_utils.IndexManifest,
+        to_be_added: index_utils.IndexManifest,
+        sources_to_be_updated: index_utils.IndexManifest) -> str:
+    """
+    Generates a user-readable message justifying why we need to
+    update our index before answering their question.
+    """
+    message: str = ""
+    delimiter = ""
+    if sources_to_be_deleted:
+        message += (
+            "My response is drawn from deleted sources "
+            f"{', '.join([doc.name for doc in sources_to_be_deleted.values()])}, "
+            "Since my response is stale, I need to update "
+            "my data before giving you an accurate response.")
+        delimiter = " "
+    if to_be_added:
+        message += (
+            f"{delimiter}There are new file(s) that have been recently added "
+            "which might have a better response to your query, "
+            "but I haven't processed them yet: "
+            f"{', '.join([doc.name for doc in to_be_added.values()])}.")
+        delimiter = " "
+    if sources_to_be_updated:
+        message += (
+            f"{delimiter}My response is drawn from stale sources "
+            f"{', '.join([doc.name for doc in sources_to_be_updated])}, "
+            "which have been modified recently. "
+            "Since my response is stale, I need to update "
+            "my data before giving you a more accurate response.")
+    if message:
+        logging.info(message)
+    return message
+
+
 def is_user_authenticated() -> bool:
     return "google_auth_code" in st.session_state
 
@@ -104,14 +140,16 @@ def get_vectorstore_indexwrapper(
 def check_for_updates(
         sources: List[str],
         latest_documents: List[index_utils.Document],
-        existing_index_manifest: index_utils.IndexManifest) -> Optional[str]:
+        existing_index_manifest: index_utils.IndexManifest) -> Tuple[index_utils.IndexManifest, index_utils.IndexManifest, index_utils.IndexManifest]:
     """
     Checks if the sources of an LLM's response are out of date w.r.t. Google Drive.
-    If up to date, returns None.
-    Otherwise, returns a useful message for the user.
+    Returns a tuple of:
+      1. Documents to be deleted.
+      2. Documents to be added (new).
+      3. Documents in the index to be updated.
     """
     try:
-        
+        source_set = set(sources)
         logging.info(f"check_for_updates: Fetched {len(latest_documents)} documents from Google Drive.")
         new_manifest = {doc.file_id: doc for doc in latest_documents}
         to_be_deleted, to_be_added, to_be_updated = index_utils.compare_index_manifests(
@@ -123,39 +161,11 @@ def check_for_updates(
             f"  - {len(to_be_deleted)} documents to be deleted.\n"
             f"  - {len(to_be_added)} new documents to be added.\n"
             f"  - {len(to_be_updated)} documents to be updated.")
-        message: str = ""
-        files_modified = set()
-        source_set = set(sources)
-        files_modified = set([file.name for file in to_be_deleted.values()])
-        sources_modified = set(source_set).intersection(files_modified)
-        delimiter = ""
-        if sources_modified:
-            message += (
-                "My response is drawn from deleted sources "
-                f"{', '.join(sources_modified)}, "
-                "Since my response is stale, I need to update "
-                "my data before giving you an accurate response.")
-            delimiter = " "
-        files_modified = set([file.name for file in to_be_added.values()])
-        if files_modified:
-            message += (
-                f"{delimiter}There are new file(s) that have been recently added "
-                "which might have a better response to your query, "
-                "but I haven't processed them yet: "
-                f"{', '.join(files_modified)}.")
-            delimiter = " "
-        files_modified = set([existing_index_manifest[file_id].name for file_id in to_be_updated])
-        sources_modified = set(source_set).intersection(files_modified)
-        if sources_modified:
-            message += (
-                f"{delimiter}My response is drawn from stale sources "
-                f"{', '.join(sources_modified)}, which have been modified recently. "
-                "Since my response is stale, I need to update "
-                "my data before giving you a more accurate response.")
-        if message:
-            logging.info(message)
-            return message
-        return None
+        sources_to_be_deleted: index_utils.IndexManifest = {
+            doc.file_id: doc for doc in to_be_deleted.values() if doc.name in source_set}
+        sources_to_be_updated: index_utils.IndexManifest = {
+            doc.file_id: doc for doc in to_be_updated.values() if doc.name in source_set}
+        return (sources_to_be_deleted, to_be_added, sources_to_be_updated)
     except Exception as ex:
         logging.error(ex)
         logging.error(traceback.format_exc())
@@ -183,9 +193,9 @@ def query_rag_with_rbac(
     answer = escape_markdown(response["answer"].strip())
     sources = [source.strip() for source in response["sources"].split(",")]
     sources = [source for source in sources if source != ""]
-    logging.warning(f"DEBUG: query_rag_with_rbac: user groups {groups}.")
-    logging.warning(f"DEBUG: query_rag_with_rbac: answer:\n{answer}")
-    logging.warning(f"DEBUG: query_rag_with_rbac: sources:\n{sources}")
+    logging.info(f"query_rag_with_rbac: user groups {groups}.")
+    logging.info(f"query_rag_with_rbac: answer:\n{answer}")
+    logging.info(f"query_rag_with_rbac: sources:\n{sources}")
     return (answer, sources)
 
 def query_rag_and_check_drive_for_updates(
@@ -196,6 +206,14 @@ def query_rag_and_check_drive_for_updates(
         pinecone_api_key:str ,
         pinecone_index_name: str,
         google_drive_root_folder_id: str) -> Tuple[str, List[str], index_utils.IndexManifest, Optional[str], List[index_utils.Document]]:
+    """
+    Returns a tuple of:
+      1. Answer.
+      2. Sources.
+      3. Index manifest (from the index) as of now.
+      4. Justification message in case we need to update the index, None otherwise.
+      5. List of documents that should be represented in the index to answer the given user query.
+    """
     answer: str
     sources: List[str]
     index_manifest: index_utils.IndexManifest
@@ -220,19 +238,35 @@ def query_rag_and_check_drive_for_updates(
                 folder_id=google_drive_root_folder_id,
                 drive_service=st.session_state.drive_service,
                 include_files_with_extensions=["pdf"])
-        updates = check_for_updates(
+        sources_to_be_deleted, to_be_added, sources_to_be_updated = check_for_updates(
             sources=sources,
             latest_documents=latest_documents,
             existing_index_manifest=index_manifest)
-    if updates is None:
-        st.success(
-            body="Done analyzing sources for correctness.",
-            icon=":material/inventory:")
-    else:
+        documents = []  # We'll update our index to have all these documents only.
+        for doc in index_manifest.values():  # Existing documents in index.
+            if doc.file_id in sources_to_be_deleted:
+                continue
+            if doc.file_id in sources_to_be_updated:
+                documents.append(sources_to_be_updated[doc.file_id])
+                continue
+            documents.append(doc)
+        for doc in to_be_added.values():
+            documents.append(doc)
+
+    updates = None
+    if sources_to_be_deleted or to_be_added or sources_to_be_updated:
+        updates = get_justification_message_for_updating_index(
+            sources_to_be_deleted=sources_to_be_deleted,
+            to_be_added=to_be_added,
+            sources_to_be_updated=sources_to_be_updated)
         st.warning(
             body="Done analyzing sources for correctness.",
             icon=":material/sync_problem:")
-    return (answer, sources, index_manifest, updates, latest_documents)
+    else:
+        st.success(
+            body="Done analyzing sources for correctness.",
+            icon=":material/inventory:")        
+    return (answer, sources, index_manifest, updates, documents)
 
 def main():
     st.title('LLM App: RAG with RBAC v0.2')
@@ -368,5 +402,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as ex:
-        st.warning(f"Internal error. {ex}")
+        st.warning(f"Internal error. {ex}", icon=":material/error:")
         logging.warning(traceback.format_exc())
