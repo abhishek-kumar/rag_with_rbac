@@ -145,14 +145,29 @@ def get_vectorstore_indexwrapper(
 def check_for_updates(
         sources: List[str],
         latest_documents: List[index_utils.Document],
-        existing_index_manifest: index_utils.IndexManifest) -> Tuple[index_utils.IndexManifest, index_utils.IndexManifest, index_utils.IndexManifest]:
+        existing_index_manifest: index_utils.IndexManifest,
+        user_groups: List[str]) -> Tuple[index_utils.IndexManifest, index_utils.IndexManifest, index_utils.IndexManifest]:
     """
     Checks if the sources of an LLM's response are out of date w.r.t. Google Drive.
     Returns a tuple of:
       1. Documents to be deleted.
       2. Documents to be added (new).
       3. Documents in the index to be updated.
-    """
+    """    
+    def _has_file_permission_changed_for_user(
+            old_groups: List[str],
+            new_groups: List[str]) -> bool:
+        for user_group in user_groups:
+            if user_group in old_groups and user_group not in new_groups:
+                logging.info(
+                    f"\tFile permission has changed, '{user_group}' no longer has access to file.")
+                return True
+            if user_group not in old_groups and user_group in new_groups:
+                logging.info(
+                    f"\tFile permission has changed, '{user_group}' now has access to file.")
+                return True
+        return False
+
     try:
         source_set = set(sources)
         logging.info(f"check_for_updates: Fetched {len(latest_documents)} documents from Google Drive.")
@@ -172,7 +187,10 @@ def check_for_updates(
         }
         sources_to_be_updated: index_utils.IndexManifest = {
             doc.file_id: doc for doc in to_be_updated.values()
-            if existing_index_manifest[doc.file_id].name in source_set
+            if (existing_index_manifest[doc.file_id].name in source_set or
+                _has_file_permission_changed_for_user(
+                    old_groups=existing_index_manifest[doc.file_id].read_access,
+                    new_groups=doc.read_access))
         }
         return (sources_to_be_deleted, to_be_added, sources_to_be_updated)
     except Exception as ex:
@@ -250,7 +268,8 @@ def query_rag_and_check_drive_for_updates(
         sources_to_be_deleted, to_be_added, sources_to_be_updated = check_for_updates(
             sources=sources,
             latest_documents=latest_documents,
-            existing_index_manifest=index_manifest)
+            existing_index_manifest=index_manifest,
+            user_groups=groups)
         documents = []  # We'll update our index to have all these documents only.
         for doc in index_manifest.values():  # Existing documents in index.
             if doc.file_id in sources_to_be_deleted:
@@ -275,7 +294,7 @@ def query_rag_and_check_drive_for_updates(
     else:
         st.success(
             body="Done analyzing sources for correctness.",
-            icon=":material/inventory:")        
+            icon=":material/inventory:")
     return (answer, sources, index_manifest, updates, documents)
 
 def main():
